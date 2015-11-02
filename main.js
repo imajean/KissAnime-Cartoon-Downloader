@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.24
+// @version      0.25
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -130,8 +130,8 @@ function MakeBar(page){
     if (page === 'episode'){
         bar = $('#selectPlayer').parent().parent(); //The bar that contains quality + download buttons
         MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
-        MakeQuality();
         MakeButton({first:true, id:"dlButton", text:"Download", handler:"main"});
+        MakeQuality();
         MakeCheck();
     } else if (page === 'series'){
         $(".listing").before($("<div>", {id:'bar'}));
@@ -150,8 +150,8 @@ function MakeQuality(){ //Makes the quality switch
     if ($('#selectQuality').length > 0){
         $("#selectQuality").parent().css("display", "inline-block");
     } else {
-        if (typeof setCookie == 'function') setCookie("usingFlashV1", false);
-        bar.append($("<select>", {
+        if (typeof setCookie == 'function') setCookie("usingFlashV1", false); //Fixes JWPlayer bug
+        bar.prepend($("<select>", {
             id: "selectQuality"
         }));
         $.get(eps[0], function(xhr){
@@ -285,7 +285,6 @@ function MakeCheckboxes(){
                 $this.find("td").removeClass("hovered");
                 if (indexes.length === 0) ButtonState("dlButton_sel", false);
             }
-            console.log(indexes);
         }
     }
     $("table.listing tr:gt(1)").each(function(){
