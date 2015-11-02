@@ -33,7 +33,7 @@ String.prototype.contains = function(search){
         if (str.split(search).length > 1) return true;
     }
     return false;
-}
+};
 
 //Global
 var remain = 0;  //How many downloads remain...
@@ -122,7 +122,7 @@ function SaveToDisk(link, fileName){
     });
     save.dispatchEvent(mouseEvent);
 
-    setTimeout(function(){window.parent.postMessage(link.split("|")[1], link.split("|")[2]);}, 500) //Iframe parent message    
+    setTimeout(function(){window.parent.postMessage(link.split("|")[1], link.split("|")[2]);}, 500); //Iframe parent message    
 }
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
@@ -209,7 +209,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
             }
             
         }
-    };
+    }
 }
 
 function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
@@ -261,7 +261,7 @@ $(document).mousedown(function(e){
     if (e.which === 1) isDown = true;
 }).mouseup(function(e){
     if (e.which === 1) isDown = false;
-})
+});
 
 function MakeCheckboxes(){
     var style = ".checkbox{ vertical-align:middle;}";
@@ -283,7 +283,7 @@ function MakeCheckboxes(){
             } else {
                 indexes.splice(indexes.indexOf(index), 1);
                 $this.find("td").removeClass("hovered");
-                if (indexes.length === 0) ButtonState("dlButton_sel", false)
+                if (indexes.length === 0) ButtonState("dlButton_sel", false);
             }
             console.log(indexes);
         }
