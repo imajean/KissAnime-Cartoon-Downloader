@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.23
+// @version      0.24
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -22,7 +22,6 @@ This script contains three parts
  3. The downloading video handler << This is the google docs sites
 */
 
-
 //Misc functions
 String.prototype.contains = function(search){
     var str = this;
@@ -39,16 +38,20 @@ String.prototype.contains = function(search){
 //Global
 var remain = 0;  //How many downloads remain...
 var eps = [];  //An array of the episode data
+var indexes = []; //An array containing the indexes of the episodes to be downloaded
+var isDown = false; //A flag that represents if the mouse is down or not
 var bar;
 var quality = localStorage.quality || parseInt($("#selectQuality option:selected").text().replace("p","")); //Quality selected
 var checked = localStorage.checked || false; //The checkbox
 $("<style type='text/css'> .disabled{ cursor:default!important; color:black!important;} </style>").appendTo("head");
+$("<style type='text/css'> .coolfont{ background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;} </style>").appendTo("head");
+$("<style type='text/css'> .coolbutton{ margin-left:0.5em;display:inline-block;cursor:pointer} </style>").appendTo("head");
+$("<style type='text/css'> .unselectable{ -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;} </style>").appendTo("head");
+
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
 if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").length > 0){
-    bar = $('#selectPlayer').parent().parent(); //The bar that contains quality + download buttons
-
-    //Quality fix (login error)
+    //Quality fix (login error, due to dependency on localStorage)
     if (isNaN(quality)) quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
 
     //Fix styling
@@ -58,17 +61,14 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
     $('#switch').parent().children().css('width', 'auto');
     $('#switch').html($('#switch').html().replace("Turn off the light", "Off"));
 
-    MakeMultiple("multSelect", "Select the amount of episodes after and including the starting episode");
-    MakeQuality();
-    MakeButton(true);
-    MakeCheck();
-
+    MakeBar('episode');
+    
     //Code here for local download links!!!
     $("#divDownload").html("Download video: ");
     var first = true;
     $("#selectQuality option").each(function(){
         (first) ? first = false : $("#divDownload").html($("#divDownload").html() + " - ");
-        var quality = parseInt($(this).text().replace("p", ""));
+        var quality = parseInt($(this).text().replace("p", "")); //note the use of a local variable
         $("#divDownload").append($("<a>", {html:quality+"p", class:"downloadLink", style:"cursor:pointer"}));
     });
 
@@ -79,15 +79,9 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
     //------------------------------------------------------------------          PART II              -------------------------------------------------------------------------------------*/
 } else if ($(".listing").length > 0){ 
     $.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
-        $(".listing").before($("<div>", {id:'bar'}));
-        bar = $("#bar");
-        MakeMultiple("multSelect", "Select the episode you would like to start downloading from");
-        MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
-        MakeQuality();
-        MakeButton(false);
-        MakeCheck();
+        MakeBar("series");
 
-        $("#multSelect").change(function(){
+        $("#multSelect").change(function(){ //A handler for the changing of the first episode to download
             var amount = parseInt($("#multSelect option").length) - parseInt($("#multSelect").val(), 10);
             if ($("#multAmount option").length > amount){
                 if ($("#multAmount").val() > amount) $("#multAmount").val(amount);
@@ -132,7 +126,27 @@ function SaveToDisk(link, fileName){
 }
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
-function MakeQuality(){
+function MakeBar(page){
+    if (page === 'episode'){
+        bar = $('#selectPlayer').parent().parent(); //The bar that contains quality + download buttons
+        MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
+        MakeQuality();
+        MakeButton({first:true, id:"dlButton", text:"Download", handler:"main"});
+        MakeCheck();
+    } else if (page === 'series'){
+        $(".listing").before($("<div>", {id:'bar'}));
+        bar = $("#bar");
+        MakeMultiple("multSelect", "Select the episode you would like to start downloading from");
+        MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
+        MakeQuality();
+        MakeButton({id:"dlButton", text:"Download", handler:"main"});
+        MakeButton({id:"dlButton_sel", text:"Download Selected", handler:"select", disabled:true});
+        MakeCheck();
+        MakeCheckboxes();
+    }
+}
+
+function MakeQuality(){ //Makes the quality switch
     if ($('#selectQuality').length > 0){
         $("#selectQuality").parent().css("display", "inline-block");
     } else {
@@ -142,60 +156,66 @@ function MakeQuality(){
         }));
         $.get(eps[0], function(xhr){
             var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
-            var url = $div.find('option').each(function(){
+            $div.find('option').each(function(){
                 $("#selectQuality").append($("<option>", {html:$(this).text()}));
             });
         });
     }
 }
 
-function MakeButton(firstDownload){
+function MakeButton(params){ //Makes the download button, params include id, text, handler, first, disabled
     button = $("<input>", {
-        id:"dlButton",
+        id:params.id,
         type:"button",
-        value:"Download",
-        style:"background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;margin-left:0.5em;display:inline-block;cursor:pointer"
-    }).click(function(){
-        if ($(this).hasClass("disabled") === false){
-            $(this).addClass("disabled"); 
-            $(this).attr("disabled", ""); //This removes the blue highlighting
+        value:params.text,
+        class:"coolfont coolbutton"
+    }).click(function(){MainDl($(this), params, indexes)});
+    bar.append(button);
+    if (params.disabled) ButtonState(params.id, false);
+    
+    function MainDl($this, params, indexes){
+        if ($this.hasClass("disabled") === false){
+            ButtonState(params.id, false);
+            
             quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
             if (!isNaN(quality)) localStorage.quality = quality; //If quality is a number...
             if (isNaN(quality)) quality = 720; //Temporary fix
 
-            var count = parseInt($("#multSelect").val(), 10);
-            var startIndex = 0;
+            if (params.handler === 'main'){ //If it is the button from the main bar
+                var indexes = []; //Remains separate for now...
+                var startIndex = 0;
+                var count = parseInt($("#multAmount").val(), 10);
+                if ($("#multSelect").length > 0){ //if it is from the series page
+                    startIndex = parseInt($("#multSelect").val(), 10) - 1;   
+                }
+                for (i = startIndex; i<startIndex+count; i++) indexes.push(i);
+                remain = indexes.length;
 
-            if ($("#multAmount").length > 0){
-                count = parseInt($("#multAmount").val(), 10);
-                startIndex = parseInt($("#multSelect").val(), 10) - 1;
-            }
-
-            remain = count;
-
-            //If the information for the first download is on the page....
-            if (firstDownload){
-                count -= 1;
-                startIndex += 1;
-                DownloadCurrent(quality);
+                //If the information for the first download is on the page....
+                if (params.first){
+                    indexes.shift(); //Removes first item from array
+                    DownloadCurrent(quality, params.id); //This also decrements remain when found...
+                }
+            } else if (params.handler === 'select'){ //If it is the select button
+                remain = indexes.length;
             }
 
             //Confirmation box
-            if (count > 0){
+            if (indexes.length > 0){
                 window.onbeforeunload = function() {
                     return "Leaving this page will cancel some of your downloads!";
                 };
-                DownloadVideos([startIndex, count]); //Download the videos, starting index, amount
+                DownloadVideos(indexes, params.id); //Download the videos with the given indexes
             }
+            
         }
-    });
-    bar.append(button);
+    };
 }
 
-function MakeMultiple(id, info){
+function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
     multiple = $("<select>", {
         id:id,
-        style:"background-color:#393939;color:#ccc;border:1px solid #666666;font:normal 15px 'Tahoma',Arial,Helvetica,sans-serif",
+        class:"coolfont",
         title:info
     });
 
@@ -218,11 +238,12 @@ function MakeMultiple(id, info){
     bar.append(multiple);
 }
 
-function MakeCheck(){
-    check = $("<input>", {
+function MakeCheck(){ //Makes the boolean checkboxes (currently Remove Dub/Sub)
+    var check = $("<input>", {
         id:'dlCheck',
         type:'checkbox',
-        style:'margin-left:0.8em;-webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;-o-user-select: none;user-select: none;',
+        class:'unselectable',
+        style:'margin-left:0.8em;',
         title:'Use this checkbox to rename the files with or without the (dub) and (sub) tags'
     });
     if (checked === "true") check.prop("checked", true);
@@ -236,39 +257,85 @@ function MakeCheck(){
     $("#dlCheck").after(label);
 }
 
-//------------------------------------------------------------------            MISC               -------------------------------------------------------------------------------------*/
-//Core downloading functions
-function DownloadCurrent(quality){
-    var url = asp.wrap($("#selectQuality option:contains('"+quality.toString()+"')").attr("value"));
-    var titleText = $("title").text();
-    GetExtVid(url, titleText);
+$(document).mousedown(function(e){
+    if (e.which === 1) isDown = true;
+}).mouseup(function(e){
+    if (e.which === 1) isDown = false;
+})
+
+function MakeCheckboxes(){
+    var style = ".checkbox{ vertical-align:middle;}";
+    style += " .hovered{ background:#660000!important;color:yellow}";
+    $("<style type='text/css'>"+style+"</style>").appendTo("head");
+
+    var length = $("table.listing tr:gt(1)").length;
+    function MouseHandle(e, $this){
+        if (isDown || e.data.force){
+            var index = $this.find("input").attr("index");
+            var newState = !$this.find("input").prop("checked");
+            $this.find("input").prop("checked", newState);
+            if (newState){ //if activated
+                if (indexes.indexOf(index) === -1){
+                    indexes.push(index);
+                    $this.find("td").addClass("hovered");
+                }
+                if (!ButtonState("dlButton_sel")) ButtonState("dlButton_sel", true);
+            } else {
+                indexes.splice(indexes.indexOf(index), 1);
+                $this.find("td").removeClass("hovered");
+                if (indexes.length === 0) ButtonState("dlButton_sel", false)
+            }
+            console.log(indexes);
+        }
+    }
+    $("table.listing tr:gt(1)").each(function(){
+        $(this).addClass("unselectable");
+        $(this).mouseover({force:false}, function(e){MouseHandle(e, $(this))});
+        $(this).mousedown({force:true}, function(e){MouseHandle(e, $(this))});
+
+        var $text = $(this).find("td").eq(0);
+        var index = length - ($(this).index()-1);
+        $text.html("<input type='checkbox' class='checkbox' index='"+index+"'>"+$text.html());
+    });
+    $(".checkbox").click(function(e){
+        e.preventDefault();
+    });
 }
 
-function DownloadVideos(range){ //Where range is in the form [startingIndex, amount]
-    var startingIndex = range[0];
-    var amount = range[1];
-    for (var i = startingIndex; i<amount+startingIndex; i++){ //Download the videos
-        CreateAnother(i);
+//------------------------------------------------------------------            MISC               -------------------------------------------------------------------------------------*/
+//Core downloading functions
+function DownloadCurrent(quality, id){
+    var url = asp.wrap($("#selectQuality option:contains('"+quality.toString()+"')").attr("value"));
+    var titleText = $("title").text();
+    GetExtVid(url, titleText, id);
+}
+
+function DownloadVideos(indexes, id){ //Where indexes refer to the indexes of the videos
+    indexes.sort(sortNumber);
+    for (var i = 0; i<indexes.length; i++){ //Download the videos
+        CreateAnother(indexes[i], id);
     }
 }
 
-function CreateAnother(index){
-    var currUrl = window.location.href;
-    var newUrl = eps[index];
+function sortNumber(a,b) {
+    return Number(a) - Number(b);
+}
 
+function CreateAnother(index, id){
+    var newUrl = eps[index];
     $.get(newUrl, function(xhr){
         var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
         var url = asp.wrap($div.find('option:contains("'+quality.toString()+'")').attr('value'));
         var titleText = xhr.split("<title>")[1].split("</title>")[0];
-        GetExtVid(url, titleText);
+        GetExtVid(url, titleText, id);
     });
 }
 
-function GetExtVid(url, titleText){ //Get the link for a new video
+function GetExtVid(url, titleText, id){ //Get the link for a new video
     var title = (titleText.split("- Watch")[0].replace(/\n/g, " ")).trim();
     GetVid(url, title);
     remain--;
-    if (remain === 0) window.onbeforeunload = null, setTimeout(EnableButton, 500); //Remove leave confirmation
+    if (remain === 0) window.onbeforeunload = null, setTimeout(function(){ButtonState(id, true)}, 500); //Remove leave confirmation
 }
 
 function GetVid(link, title){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
@@ -284,9 +351,18 @@ function GetVid(link, title){ //Force the download to be started from an iframe 
     $("body").append(iframe);
 }
 
-function EnableButton(){
-    $("#dlButton").removeClass("disabled");
-    $("#dlButton").removeAttr("disabled");
+function ButtonState(id, enable){
+    if (enable !== 'undefined'){    
+        if (enable){
+            $("#"+id).removeClass("disabled");
+            $("#"+id).removeAttr("disabled");
+        } else if (enable === false) {
+            $("#"+id).addClass("disabled"); 
+            $("#"+id).attr("disabled", ""); //This removes the blue highlighting
+        }
+    } else if (id){
+        return !($("#"+id).hasClass("disabled"))
+    }
 }
 
 // IFrame cross-browser stuff, removes the iframe when it has loaded...
