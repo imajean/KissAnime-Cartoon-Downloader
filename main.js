@@ -53,7 +53,7 @@ var bar;
 var global_settings = localStorage.getObject('global_settings') || {
     'quality':720, //Quality selected
     'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
-    'jDownload':false //Whether or not to use jDownload
+    'downloadTo':'browser' //Whether or not to use jDownload
 }
 function UpdateGlobalSettings(){
     localStorage.setObject('global_settings', global_settings);
@@ -115,7 +115,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
 } else if (window.location.href.indexOf("google") > -1){ //called by GetVid as a result of an iframe
     var link = window.location.href;
     if (link.split('#').length > 1){
-        var settings = JSON.parse(link.split("#")[1].replace(/\%22/g,'"')); //settings is an object including title, remain, link, host, jDownload
+        var settings = JSON.parse(link.split("#")[1].replace(/\%22/g,'"')); //settings is an object including title, remain, link, host, downloadTo
         $('body').remove(); //Stop video
         SaveToDisk(link, settings); //Save
     }
@@ -126,7 +126,7 @@ function SaveToDisk(link, settings){
     save.href = link.split("#")[0]+"&title="+settings.title
     save.target = '_blank';
     save.download = settings.title || 'unknown';
-    if (!settings.jDownload){ //NOTE: should be a NOT here
+    if (settings.downloadTo === "browser"){ //Will attempt to download through browser
         (document.body || document.documentElement).appendChild(save);
         save.onclick = function() {
             (document.body || document.documentElement).removeChild(save);
@@ -137,11 +137,11 @@ function SaveToDisk(link, settings){
             cancelable: true
         });
         save.dispatchEvent(mouseEvent);
-    } else {
+    } else if (settings.downloadTo === "idm"){ //Will attempt to downoad through idm
         window.location.href = save.href;
     }
 
-    setTimeout(function(){window.parent.postMessage({'id':settings.remain, 'url':save.href}, settings.host);}, 500); //Iframe parent message    
+    setTimeout(function(){window.parent.postMessage({'id':settings.remain}, settings.host);}, 500); //Iframe parent message    
 }
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
@@ -360,7 +360,7 @@ function GetVid(link, title){ //Force the download to be started from an iframe 
     if (global_settings.checked === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
     }
-    var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "jDownload":global_settings.jDownload}
+    var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo}
     iframe = $("<iframe>", { //Send video to other script to be downloaded.
         src: link + "#" + JSON.stringify(settings),
         style: "width:0;height:0",
@@ -395,7 +395,6 @@ $(document).ready(function(){
         if (e.origin){
             if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
                 $("#dlExt"+e.data.id).remove();
-                if (global_settings.jDownload) $.post("http://127.0.0.1:9666/flash/add", {"passwords": "myPassword", "urls":e.data.url.split("&title")[0],"source":"http://kissanime.com/Anime/Lamune-Specials"});
             }
         }
     }, false); 
