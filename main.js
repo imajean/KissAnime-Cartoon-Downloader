@@ -35,14 +35,30 @@ String.prototype.contains = function(search){
     return false;
 };
 
+Storage.prototype.setObject = function(key, value){ //Set JSON localstorage
+    this.setItem(key, JSON.stringify(value));
+}
+
+Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
+    var value = this.getItem(key);
+    return value && JSON.parse(value);
+}
+
 //Global
 var remain = 0;  //How many downloads remain...
 var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
 var isDown = false; //A flag that represents if the mouse is down or not
 var bar;
-var quality = localStorage.quality || parseInt($("#selectQuality option:selected").text().replace("p","")); //Quality selected
-var checked = localStorage.checked || false; //The checkbox
+var global_settings = localStorage.getObject('global_settings') || {
+    'quality':720, //Quality selected
+    'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
+    'jDownload':false //Whether or not to use jDownload
+}
+function UpdateGlobalSettings(){
+    localStorage.setObject('global_settings', global_settings);
+}
+
 $("<style type='text/css'> .disabled{ cursor:default!important; color:black!important;} </style>").appendTo("head");
 $("<style type='text/css'> .coolfont{ background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;} </style>").appendTo("head");
 $("<style type='text/css'> .coolbutton{ margin-left:0.5em;display:inline-block;cursor:pointer} </style>").appendTo("head");
@@ -52,7 +68,8 @@ $("<style type='text/css'> .unselectable{ -webkit-user-select: none;-moz-user-se
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
 if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").length > 0){
     //Quality fix (login error, due to dependency on localStorage)
-    if (isNaN(quality)) quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
+    if (isNaN(global_settings.quality)) global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
+    UpdateGlobalSettings();
 
     //Fix styling
     $("#selectPlayer option").each(function(){
@@ -68,8 +85,8 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
     var first = true;
     $("#selectQuality option").each(function(){
         (first) ? first = false : $("#divDownload").html($("#divDownload").html() + " - ");
-        var quality = parseInt($(this).text().replace("p", "")); //note the use of a local variable
-        $("#divDownload").append($("<a>", {html:quality+"p", class:"downloadLink", style:"cursor:pointer"}));
+        var cQuality = parseInt($(this).text().replace("p", "")); //note the use of a local variable
+        $("#divDownload").append($("<a>", {html:cQuality+"p", class:"downloadLink", style:"cursor:pointer"}));
     });
 
     $(document).on("click", ".downloadLink", function(){
@@ -97,32 +114,34 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
     //------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
 } else if (window.location.href.indexOf("google") > -1){ //called by GetVid as a result of an iframe
     var link = window.location.href;
-
     if (link.split('#').length > 1){
+        var settings = JSON.parse(link.split("#")[1].replace(/\%22/g,'"')); //settings is an object including title, remain, link, host, jDownload
         $('body').remove(); //Stop video
-        title = decodeURIComponent(link.split('#')[1].split("|")[0])+".mp4"; //Get title name
-        SaveToDisk(link, title); //Save
+        SaveToDisk(link, settings); //Save
     }
 }
 
-function SaveToDisk(link, fileName){
+function SaveToDisk(link, settings){
     var save = document.createElement('a');
-    save.href = link.split("#")[0];
+    save.href = link.split("#")[0]+"&title="+settings.title
     save.target = '_blank';
-    save.download = fileName || 'unknown';    
-    
-    (document.body || document.documentElement).appendChild(save);
-    save.onclick = function() {
-        (document.body || document.documentElement).removeChild(save);
-    };
-    var mouseEvent = new MouseEvent('click', {
-        view: window,
-        bubbles: true,
-        cancelable: true
-    });
-    save.dispatchEvent(mouseEvent);
+    save.download = settings.title || 'unknown';
+    if (!settings.jDownload){ //NOTE: should be a NOT here
+        (document.body || document.documentElement).appendChild(save);
+        save.onclick = function() {
+            (document.body || document.documentElement).removeChild(save);
+        };
+        var mouseEvent = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true
+        });
+        save.dispatchEvent(mouseEvent);
+    } else {
+        window.location.href = save.href;
+    }
 
-    setTimeout(function(){window.parent.postMessage(link.split("|")[1], link.split("|")[2]);}, 500); //Iframe parent message    
+    setTimeout(function(){window.parent.postMessage({'id':settings.remain, 'url':save.href}, settings.host);}, 500); //Iframe parent message    
 }
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
@@ -177,9 +196,9 @@ function MakeButton(params){ //Makes the download button, params include id, tex
         if ($this.hasClass("disabled") === false){
             ButtonState(params.id, false);
             
-            quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
-            if (!isNaN(quality)) localStorage.quality = quality; //If quality is a number...
-            if (isNaN(quality)) quality = 720; //Temporary fix
+            global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
+            if (isNaN(global_settings.quality)) global_settings.quality = 720; //Temporary fix
+            UpdateGlobalSettings();
 
             if (params.handler === 'main'){ //If it is the button from the main bar
                 var indexes = []; //Remains separate for now...
@@ -194,7 +213,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
                 //If the information for the first download is on the page....
                 if (params.first){
                     indexes.shift(); //Removes first item from array
-                    DownloadCurrent(quality, params.id); //This also decrements remain when found...
+                    DownloadCurrent(global_settings.quality, params.id); //This also decrements remain when found...
                 }
             } else if (params.handler === 'select'){ //If it is the select button
                 remain = indexes.length;
@@ -240,21 +259,21 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
 
 function MakeCheck(){ //Makes the boolean checkboxes (currently Remove Dub/Sub)
     var check = $("<input>", {
-        id:'dlCheck',
+        id:'remSubDub',
         type:'checkbox',
         class:'unselectable',
         style:'margin-left:0.8em;',
         title:'Use this checkbox to rename the files with or without the (dub) and (sub) tags'
     });
-    if (checked === "true") check.prop("checked", true);
+    if (global_settings.remSubDub === true) check.prop("checked", true);
     check.change(function(){
-        checked = $('#dlCheck').is(':checked');
-        localStorage.checked = checked;
+        global_settings.remSubDub = $('#remSubDub').is(':checked');
+        UpdateGlobalSettings();
     });
 
-    label = "<label for='dlCheck'> Remove Dub/Sub</label>";
+    label = "<label for='remSubDub'> Remove Dub/Sub</label>";
     bar.append(check);
-    $("#dlCheck").after(label);
+    $("#remSubDub").after(label);
 }
 
 $(document).mousedown(function(e){
@@ -290,7 +309,7 @@ function MakeCheckboxes(){
     $("table.listing tr:gt(1)").each(function(){
         $(this).addClass("unselectable");
         $(this).mouseover({force:false}, function(e){MouseHandle(e, $(this))});
-        $(this).mousedown({force:true}, function(e){MouseHandle(e, $(this))});
+        $(this).mousedown({force:true}, function(e){if (e.which === 1) MouseHandle(e, $(this))});
 
         var $text = $(this).find("td").eq(0);
         var index = length - ($(this).index()-1);
@@ -324,7 +343,7 @@ function CreateAnother(index, id){
     var newUrl = eps[index];
     $.get(newUrl, function(xhr){
         var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
-        var url = asp.wrap($div.find('option:contains("'+quality.toString()+'")').attr('value'));
+        var url = asp.wrap($div.find('option:contains("'+global_settings.quality.toString()+'")').attr('value'));
         var titleText = xhr.split("<title>")[1].split("</title>")[0];
         GetExtVid(url, titleText, id);
     });
@@ -338,11 +357,12 @@ function GetExtVid(url, titleText, id){ //Get the link for a new video
 }
 
 function GetVid(link, title){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
-    if (checked === "true"){
+    if (global_settings.checked === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
     }
+    var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "jDownload":global_settings.jDownload}
     iframe = $("<iframe>", { //Send video to other script to be downloaded.
-        src: link + "#" + encodeURIComponent(title) + '|' + remain + '|' + window.location.href.split(".com")[0]+".com",
+        src: link + "#" + JSON.stringify(settings),
         style: "width:0;height:0",
         id: 'dlExt'+remain,
         class: 'extVid'
@@ -374,7 +394,8 @@ $(document).ready(function(){
     eventer(messageEvent, function (e){
         if (e.origin){
             if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
-                $("#dlExt"+e.data).remove();
+                $("#dlExt"+e.data.id).remove();
+                if (global_settings.jDownload) $.post("http://127.0.0.1:9666/flash/add", {"passwords": "myPassword", "urls":e.data.url.split("&title")[0],"source":"http://kissanime.com/Anime/Lamune-Specials"});
             }
         }
     }, false); 
