@@ -298,7 +298,7 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
 
 function MakeSettings(){
     var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>Settings</h1>");
-    var $container = $("<div>", {class:"settingsWindow"}).append("<p>Below are some settings that can be used to configure the script. The settings for the script update as soon as a value is changed automatically, and this change carries across browser windows without the need to restart. Further help can be found at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader'>GitHub</a></p>");
+    var $container = $("<div>", {class:"settingsWindow"}).append("<p>Below are some settings that can be used to configure the script. The settings for the script update as soon as a value is changed automatically, and this change carries across browser windows without the need to restart. Further help can be found at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader'>GitHub</a>.</p>");
     
     $container.append("<h2>Filename parameters</h2>");
     var $remSubDub = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags');
@@ -308,8 +308,14 @@ function MakeSettings(){
     var $downloadTo = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
         browser:{text:'Download with Browser'}, 
         idm:{text:'Download with IDM', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
-        jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber'}});
+        jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}});
     $content.append($container.append($downloadTo));
+
+    var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':0,'margin-top':'8px','text-align':'right'}});
+    $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
+    closeBtn.click(function(){
+        light.disable();
+    })
     
     var light = new Lightbox('settings', $content, {width:"400px",height:"300px",color:"black"});
     var settingsBtn = MakeButton({text:"Settings"})
