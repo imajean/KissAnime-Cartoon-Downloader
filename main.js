@@ -55,7 +55,7 @@ function Lightbox(id, $content, css){
     }
     
     var $box = $("<div>", {
-        style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.7",
+        style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8",
         id:id+'_box'
     }).click(this.disable)
     
@@ -84,11 +84,20 @@ function UpdateGlobalSettings(){
     localStorage.setObject('global_settings', global_settings);
 }
 
-$("<style type='text/css'> .disabled{ cursor:default!important; color:black!important;} </style>").appendTo("head");
-$("<style type='text/css'> .coolfont{ background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;} </style>").appendTo("head");
-$("<style type='text/css'> .coolbutton{ margin-left:0.5em;display:inline-block;cursor:pointer} </style>").appendTo("head");
-$("<style type='text/css'> .unselectable{ -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;} </style>").appendTo("head");
-$("<style type='text/css'> .checkbox{ vertical-align:middle;} </style>").appendTo("head");
+var css = [
+    ".disabled{ cursor:default!important; color:black!important;}",
+    ".coolfont{ background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;}",
+    ".coolbutton{ margin-left:0.5em;display:inline-block;cursor:pointer;}",
+    ".pointer{ cursor:pointer}",
+    ".coollink{ color:red; margin-left:1em}",
+    ".unselectable{ -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}",
+    ".midalign{ vertical-align:middle;}",
+    ".settingsWindow{ width:100%;height:200px;overflow-y:scroll;border:1px solid gray;border-width:1px 0;}",
+    ".settingsWindow a{ color:red}",
+    ".settingsWindow h2{ margin-bottom:0.2em}"
+];
+
+$("<style type='text/css'>"+css.join("\n")+"</style>").appendTo("head");
 
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
@@ -112,7 +121,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
     $("#selectQuality option").each(function(){
         (first) ? first = false : $("#divDownload").html($("#divDownload").html() + " - ");
         var cQuality = parseInt($(this).text().replace("p", "")); //note the use of a local variable
-        $("#divDownload").append($("<a>", {html:cQuality+"p", class:"downloadLink", style:"cursor:pointer"}));
+        $("#divDownload").append($("<a>", {html:cQuality+"p", class:"downloadLink pointer"}));
     });
 
     $(document).on("click", ".downloadLink", function(){
@@ -186,7 +195,7 @@ function MakeBar(page){
         MakeQuality();
         MakeButton({id:"dlButton", text:"Download", handler:"main"});
         MakeButton({id:"dlButton_sel", text:"Download Selected", handler:"select", disabled:true});
-        MakeCheck();
+        MakeSettings();
         MakeCheckboxes();
     }
 }
@@ -288,21 +297,26 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
 }
 
 function MakeSettings(){
-    var $content = $("<div>").append("<center><h2>Settings</h2></center>");
-    var $container = $("<div>", {style:"width:100%;height:auto;overflow-y:scroll;border:1px solid black;border-width:1px 0"})
+    var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>Settings</h1>");
+    var $container = $("<div>", {class:"settingsWindow"}).append("<p>Below are some settings that can be used to configure the script. The settings for the script update as soon as a value is changed automatically, and this change carries across browser windows without the need to restart. Further help can be found at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader'>GitHub</a></p>");
+    
+    $container.append("<h2>Filename parameters</h2>");
     var $remSubDub = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags');
+    $container.append($remSubDub);
+
+    $container.append("<h2>Download parameters</h2>");
     var $downloadTo = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
-        browser:{text:'Download to Browser'}, 
-        idm:{text:'Download with IDM', help:'A browser extension is required...'}, 
-        jDownload:{text:'Download with JDownload', help:'Note that this is done by a box of links'}});
-    $content.append($container.append($remSubDub).append("<br />").append($downloadTo));
+        browser:{text:'Download with Browser'}, 
+        idm:{text:'Download with IDM', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
+        jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber'}});
+    $content.append($container.append($downloadTo));
     
     var light = new Lightbox('settings', $content, {width:"400px",height:"300px",color:"black"});
     var settingsBtn = MakeButton({text:"Settings"})
     settingsBtn.click(function(){
+        $(".helpToggle").hide();
         global_settings = localStorage.getObject('global_settings');
         $("#remSubDub").prop("checked", global_settings.remSubDub);
-        alert("input[value='"+global_settings.downloadTo+"']");
         $("#downloadTo").find("input[value='"+global_settings.downloadTo+"']").attr("checked", "checked");
         light.enable();
     })
@@ -312,8 +326,7 @@ function MakeCheck(setting, info, label){ //Makes the boolean checkboxes
     var $check = $("<label>", {title:info}).append($("<input>", {
         id:setting,
         type:'checkbox',
-        class:'unselectable checkbox',
-        style:'margin-left:0.8em;'
+        class:'unselectable midalign'
     }));
     $check.html($check.html() + " "+label);
 
@@ -326,7 +339,7 @@ function MakeCheck(setting, info, label){ //Makes the boolean checkboxes
     return $span;
 }
 function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
-    var $radio = $("<form>", {id:setting});
+    var $radio = $("<form>", {id:setting, style:'margin-bottom:1em'});
     for (var key in options){
         if (options.hasOwnProperty(key)) {
             $button = $("<label>").append($("<input>", {
@@ -335,8 +348,22 @@ function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
                 value:key
             }))
 
+            $radio.append($button)
             $button.html($button.html()+" "+options[key]['text'])
-            $radio.append($button).append("<br />");
+            if (options[key]['help']){
+                $div = $("<div>", {style:"background-color:'green';html:options[key]['help'];display:none;width:300px", html:options[key]['help'], class:'helpToggle'});
+                $a = $("<a>", {
+                    html: "help?",
+                    class: "pointer coollink"
+                }).click(function(){
+                    $(this).next().find("div").slideToggle();
+                    ($(this).html() === "help?") ? $(this).html("close") : $(this).html("help?");
+                })
+                $radio.append($a).append($("<div>", {style:'display:inline-block'}).append($div));
+            }
+
+            $radio.append("<br />");
+
         }
     }
     $(document).on("change", "input[name="+setting+"]:radio", function(){
@@ -384,7 +411,7 @@ function MakeCheckboxes(){
 
         var $text = $(this).find("td").eq(0);
         var index = length - ($(this).index()-1);
-        $text.html("<input type='checkbox' class='checkbox' index='"+index+"'>"+$text.html());
+        $text.html("<input type='checkbox' class='checkbox midalign' index='"+index+"'>"+$text.html());
     });
     $(".checkbox").click(function(e){
         e.preventDefault();
