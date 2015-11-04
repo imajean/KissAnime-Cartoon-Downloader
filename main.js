@@ -302,7 +302,8 @@ function MakeSettings(){
     settingsBtn.click(function(){
         global_settings = localStorage.getObject('global_settings');
         $("#remSubDub").prop("checked", global_settings.remSubDub);
-        $("#downloadTo").val(global_settings.downloadTo);
+        alert("input[value='"+global_settings.downloadTo+"']");
+        $("#downloadTo").find("input[value='"+global_settings.downloadTo+"']").attr("checked", "checked");
         light.enable();
     })
 }
@@ -316,35 +317,30 @@ function MakeCheck(setting, info, label){ //Makes the boolean checkboxes
     }));
     $check.html($check.html() + " "+label);
 
-    if (global_settings[setting] === true) $check.prop("checked", true);
-    $check.change(function(){
-        global_settings[setting] = $check.is(':checked');
+    $check.find("input").change(function(){
+        global_settings[setting] = $(this).is(':checked');
         UpdateGlobalSettings();
     });
-
 
     $span = $("<span>").append($check).append("<br />");
     return $span;
 }
 function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
-    var $radio = $("<form>");
+    var $radio = $("<form>", {id:setting});
     for (var key in options){
         if (options.hasOwnProperty(key)) {
-            $radio.append($("<input>", {
+            $button = $("<label>").append($("<input>", {
                 type:'radio',
                 name:setting,
-                id:setting+"_"+key,
                 value:key
-            })).append($("<label>", {
-                for:setting+"_"+key,
-                html:" "+options[key]['text']
-            })).append("<br />");
+            }))
+
+            $button.html($button.html()+" "+options[key]['text'])
+            $radio.append($button).append("<br />");
         }
     }
-
-    if (global_settings[setting]) $radio.find("value="+global_settings[setting]).attr("checked", "checked");
-    $radio.change(function(){
-        global_settings[setting] = $radio.val();
+    $(document).on("change", "input[name="+setting+"]:radio", function(){
+        global_settings[setting] = $(this).attr("value");
         UpdateGlobalSettings();
     });
 
