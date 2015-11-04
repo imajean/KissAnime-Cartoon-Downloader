@@ -177,7 +177,6 @@ function MakeBar(page){
         MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
         MakeButton({first:true, id:"dlButton", text:"Download", handler:"main"});
         MakeQuality();
-        MakeCheck();
         MakeSettings();
     } else if (page === 'series'){
         $(".listing").before($("<div>", {id:'bar'}));
@@ -291,37 +290,65 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
 function MakeSettings(){
     var $content = $("<div>").append("<center><h2>Settings</h2></center>");
     var $container = $("<div>", {style:"width:100%;height:auto;overflow-y:scroll;border:1px solid black;border-width:1px 0"})
-    var $remSubDub = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags')
-    $content.append($container.append($remSubDub));
+    var $remSubDub = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags');
+    var $downloadTo = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
+        browser:{text:'Download to Browser'}, 
+        idm:{text:'Download with IDM', help:'A browser extension is required...'}, 
+        jDownload:{text:'Download with JDownload', help:'Note that this is done by a box of links'}});
+    $content.append($container.append($remSubDub).append("<br />").append($downloadTo));
     
     var light = new Lightbox('settings', $content, {width:"400px",height:"300px",color:"black"});
     var settingsBtn = MakeButton({text:"Settings"})
     settingsBtn.click(function(){
         global_settings = localStorage.getObject('global_settings');
         $("#remSubDub").prop("checked", global_settings.remSubDub);
+        $("#downloadTo").val(global_settings.downloadTo);
         light.enable();
     })
 }
 
 function MakeCheck(setting, info, label){ //Makes the boolean checkboxes
-    var $check = $("<input>", {
+    var $check = $("<label>", {title:info}).append($("<input>", {
         id:setting,
         type:'checkbox',
         class:'unselectable checkbox',
-        style:'margin-left:0.8em;',
-        title:info
-    });
+        style:'margin-left:0.8em;'
+    }));
+    $check.html($check.html() + " "+label);
+
     if (global_settings[setting] === true) $check.prop("checked", true);
     $check.change(function(){
         global_settings[setting] = $check.is(':checked');
         UpdateGlobalSettings();
     });
 
-    var $label = $("<label>", {
-        for:setting,
-        html:" "+label
-    })
-    $span = $("<span>").append($check).append($label);
+
+    $span = $("<span>").append($check).append("<br />");
+    return $span;
+}
+function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
+    var $radio = $("<form>");
+    for (var key in options){
+        if (options.hasOwnProperty(key)) {
+            $radio.append($("<input>", {
+                type:'radio',
+                name:setting,
+                id:setting+"_"+key,
+                value:key
+            })).append($("<label>", {
+                for:setting+"_"+key,
+                html:" "+options[key]['text']
+            })).append("<br />");
+        }
+    }
+
+    if (global_settings[setting]) $radio.find("value="+global_settings[setting]).attr("checked", "checked");
+    $radio.change(function(){
+        global_settings[setting] = $radio.val();
+        UpdateGlobalSettings();
+    });
+
+    $span = $("<span>", {html:label}).append($radio);
     return $span;
 }
 
