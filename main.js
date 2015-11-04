@@ -37,18 +37,18 @@ String.prototype.contains = function(search){
 
 Storage.prototype.setObject = function(key, value){ //Set JSON localstorage
     this.setItem(key, JSON.stringify(value));
-}
+};
 
 Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
     var value = this.getItem(key);
     return value && JSON.parse(value);
-}
+};
 
 function Lightbox(id, $content, css){
     this.enable = function(){
         $("#"+id+"_box").show();
         $("#"+id+"_content").show();
-    }
+    };
     this.disable = function(){
         $("#"+id+"_box").hide();
         $("#"+id+"_content").hide();
@@ -57,9 +57,9 @@ function Lightbox(id, $content, css){
     var $box = $("<div>", {
         style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8",
         id:id+'_box'
-    }).click(this.disable)
+    }).click(this.disable);
     
-    $content.css("margin", "0.5em 1em").addClass("unselectable")
+    $content.css("margin", "0.5em 1em").addClass("unselectable");
     var $cont = $("<div>", {
         id:id+"_content",
         style:"display:none;background-color:white;position:fixed;width:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;"
@@ -82,7 +82,8 @@ var global_settings = localStorage.getObject('global_settings') || {
     'downloadTo':'browser', //Whether or not to use jDownload
     'count':true,
     'drag':false
-}
+};
+
 var jDownloadUrls = [];
 function UpdateGlobalSettings(){
     localStorage.setObject('global_settings', global_settings);
@@ -164,7 +165,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
 
 function SaveToDisk(link, settings){
     var save = document.createElement('a');
-    save.href = link.split("#")[0]+"&title="+settings.title
+    save.href = link.split("#")[0]+"&title="+settings.title;
     save.target = '_blank';
     save.download = settings.title || 'unknown';
     if (settings.downloadTo === "browser"){ //Will attempt to download through browser
@@ -232,12 +233,12 @@ function MakeButton(params){ //Makes the download button, params include id, tex
         value:params.text,
         defaultValue:params.text,
         class:"coolfont coolbutton"
-    })
+    });
     if (!params.objectOnly) bar.append(button);
     if (params.css) button.css(params.css);
     if (params.disabled) ButtonState(params.id, false);
 
-    if (params.handler) button.click(function(){MainDl($(this), params, indexes)})
+    if (params.handler) button.click(function(){MainDl($(this), params, indexes)});
     if (!params.handler) return button;
     
     function MainDl($this, params, indexes){
@@ -327,7 +328,7 @@ function MakeSettings(){
         jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}}, {appendTo:$container});
  
     $container.append("<h2>Select settings</h2>");
-    $container = MakeCheck('drag', 'This checkbox toggles the ability to drag', 'Enable Drag Select', {'appendTo':$container, 'help':'This feature is experimental and allows the user to select from the series selection page using a drag. See the docs for more information.'})
+    $container = MakeCheck('drag', 'This checkbox toggles the ability to drag', 'Enable Drag Select', {'appendTo':$container, 'help':'This feature is experimental and allows the user to select from the series selection page using a drag. See the docs for more information.'});
     checkboxes.push("drag");
 
     $content.append($container);
@@ -335,17 +336,17 @@ function MakeSettings(){
     $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
     closeBtn.click(function(){
         light.disable();
-    })
+    });
     
     var light = new Lightbox('settings', $content, {width:"400px",height:"300px",color:"black"});
-    var settingsBtn = MakeButton({text:"Settings"})
+    var settingsBtn = MakeButton({text:"Settings"});
     settingsBtn.click(function(){
         $(".helpToggle").hide();
         global_settings = localStorage.getObject('global_settings');
         for (i = 0; i<checkboxes.length; i++) $("#"+checkboxes[i]).prop("checked", global_settings[checkboxes[i]]);
         $("#downloadTo").find("input[value='"+global_settings.downloadTo+"']").attr("checked", "checked");
         light.enable();
-    })
+    });
 }
 function CheckHelp($element, object){
     var object = object || '';
@@ -387,15 +388,15 @@ function MakeCheck(setting, info, label, options){ //Makes the boolean checkboxe
 function MakeRadio(setting, label, choices, options){ //Makes the boolean checkboxes
     var $radio = $("<form>", {id:setting});
     for (var key in choices){
-        if (choices.hasOwnProperty(key)) {
+        if (choices.hasOwnProperty(key)){
             $button = $("<label>").append($("<input>", {
                 type:'radio',
                 name:setting,
                 value:key
-            }))
+            }));
 
-            $radio.append($button)
-            $button.html($button.html()+" "+choices[key]['text'])
+            $radio.append($button);
+            $button.html($button.html()+" "+choices[key]['text']);
             $radio = CheckHelp($radio, choices[key]);
             $radio.append("<br />");
 
@@ -488,6 +489,7 @@ function GetExtVid(url, titleText, id){ //Get the link for a new video
     GetVid(url, title, id);
 }
 
+var intervals = [];
 function GetVid(link, title, id){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
     if (global_settings.remSubDub === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
@@ -500,6 +502,14 @@ function GetVid(link, title, id){ //Force the download to be started from an ifr
         class: 'extVid'
     });
     $("body").append(iframe);
+
+    
+    eval("var remain_"+remain+" = "+remain)
+    eval("var intervals_"+remain+" = setInterval(function(){IframeReloader(remain_"+remain+")}, 5000)");
+
+    function IframeReloader(remain){
+        ($("#dlExt"+remain).length > 0) ? $('#dlExt'+remain).attr("src", $('#dlExt'+remain).attr("src")) : eval("clearInterval(intervals_"+remain+")");
+    }
 }
 
 function ButtonState(id, enable){
@@ -512,7 +522,7 @@ function ButtonState(id, enable){
             $("#"+id).attr("disabled", ""); //This removes the blue highlighting
         }
     } else if (id){
-        return !($("#"+id).hasClass("disabled"))
+        return !($("#"+id).hasClass("disabled"));
     }
 }
 
@@ -533,7 +543,7 @@ $(document).ready(function(){
                 if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain+" remaining");
                 if (remain === 0){
                     $("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
-                    if (global_settings.downloadTo = 'jDownload') ProcessJDownload();
+                    if (global_settings.downloadTo === 'jDownload') ProcessJDownload();
                     window.onbeforeunload = null; //Remove leave confirmation
                     setTimeout(function(){ButtonState(e.data.buttonId, true)}, 500); //Reset the button
                 } 
@@ -546,7 +556,7 @@ $(document).ready(function(){
 function ProcessJDownload(){
     //centerDivVideo.after OR .episodelist.append
     if ($("#jDownload")) $("#jDownload").remove();
-    var $div = $("<textarea>", {id:"jDownload",text:jDownloadUrls.join("\n"),style:"display:block;margin:1em auto;white-space:nowrap;overflow:auto;width:90%;padding:1em;height:5em"})
+    var $div = $("<textarea>", {id:"jDownload",text:jDownloadUrls.join("\n"),style:"display:block;margin:1em auto;white-space:nowrap;overflow:auto;width:90%;padding:1em;height:5em"});
     if (currentWindow === 'episode') $("#centerDivVideo").after($div);
     if (currentWindow === 'series') $("table.listing").before($div);
 
