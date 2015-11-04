@@ -70,6 +70,7 @@ function Lightbox(id, $content, css){
 }
 
 //Global
+var currentWindow = null;
 var remain = 0;  //How many downloads remain...
 var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
@@ -80,6 +81,7 @@ var global_settings = localStorage.getObject('global_settings') || {
     'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
     'downloadTo':'browser' //Whether or not to use jDownload
 }
+var jDownloadUrls = [];
 function UpdateGlobalSettings(){
     localStorage.setObject('global_settings', global_settings);
 }
@@ -102,6 +104,7 @@ $("<style type='text/css'>"+css.join("\n")+"</style>").appendTo("head");
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
 if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").length > 0){
+    currentWindow = "episode";
     //Quality fix (login error, due to dependency on localStorage)
     if (isNaN(global_settings.quality)) global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
     UpdateGlobalSettings();
@@ -130,6 +133,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
 
     //------------------------------------------------------------------          PART II              -------------------------------------------------------------------------------------*/
 } else if ($(".listing").length > 0){ 
+    currentWindow = "series";
     $.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
         MakeBar("series");
 
@@ -176,7 +180,9 @@ function SaveToDisk(link, settings){
         window.location.href = save.href;
     }
 
-    setTimeout(function(){window.parent.postMessage({'id':settings.remain}, settings.host);}, 500); //Iframe parent message    
+    var returnObj = {'id':settings.remain, 'buttonId':settings.id};
+    if (settings.downloadTo === 'jDownload') returnObj.url = save.href;
+    setTimeout(function(){window.parent.postMessage(returnObj, settings.host);}, 500); //Iframe parent message    
 }
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
@@ -222,9 +228,10 @@ function MakeButton(params){ //Makes the download button, params include id, tex
         id:params.id,
         type:"button",
         value:params.text,
+        defaultValue:params.text,
         class:"coolfont coolbutton"
     })
-    bar.append(button);
+    if (!params.objectOnly) bar.append(button);
     if (params.css) button.css(params.css);
     if (params.disabled) ButtonState(params.id, false);
 
@@ -233,6 +240,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
     
     function MainDl($this, params, indexes){
         if ($this.hasClass("disabled") === false){
+            jDownloadUrls = [];
             ButtonState(params.id, false);
             
             global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
@@ -248,6 +256,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
                 }
                 for (i = startIndex; i<startIndex+count; i++) indexes.push(i);
                 remain = indexes.length;
+                $("#"+params.id).attr("value", remain+" remaining");
 
                 //If the information for the first download is on the page....
                 if (params.first){
@@ -311,7 +320,7 @@ function MakeSettings(){
         jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}});
     $content.append($container.append($downloadTo));
 
-    var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':0,'margin-top':'8px','text-align':'right'}});
+    var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':0,'margin-top':'8px'}});
     $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
     closeBtn.click(function(){
         light.disable();
@@ -455,16 +464,14 @@ function CreateAnother(index, id){
 
 function GetExtVid(url, titleText, id){ //Get the link for a new video
     var title = (titleText.split("- Watch")[0].replace(/\n/g, " ")).trim();
-    GetVid(url, title);
-    remain--;
-    if (remain === 0) window.onbeforeunload = null, setTimeout(function(){ButtonState(id, true)}, 500); //Remove leave confirmation
+    GetVid(url, title, id);
 }
 
-function GetVid(link, title){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
+function GetVid(link, title, id){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
     if (global_settings.remSubDub === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
     }
-    var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo}
+    var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo, "id":id}
     iframe = $("<iframe>", { //Send video to other script to be downloaded.
         src: link + "#" + JSON.stringify(settings),
         style: "width:0;height:0",
@@ -499,7 +506,28 @@ $(document).ready(function(){
         if (e.origin){
             if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
                 $("#dlExt"+e.data.id).remove();
+                if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
+
+                remain--;
+                $("#"+e.data.buttonId).attr("value", remain+" remaining");
+                if (remain === 0){
+                    $("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
+                    if (global_settings.downloadTo = 'jDownload') ProcessJDownload();
+                    window.onbeforeunload = null; //Remove leave confirmation
+                    setTimeout(function(){ButtonState(e.data.buttonId, true)}, 500); //Reset the button
+                } 
             }
+            
         }
     }, false); 
 });
+
+function ProcessJDownload(){
+    //centerDivVideo.after OR .episodelist.append
+    if ($("#jDownload")) $("#jDownload").remove();
+    var $div = $("<textarea>", {id:"jDownload",text:jDownloadUrls.join("\n"),style:"white-space:nowrap;overflow:auto;width:90%;padding:1em;height:5em"})
+    if (currentWindow === 'episode') $("#centerDivVideo").after($div);
+    if (currentWindow === 'series') $(".episodelist").eq(0).append($div);
+
+    $div.select();
+}
