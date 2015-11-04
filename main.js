@@ -79,7 +79,8 @@ var bar;
 var global_settings = localStorage.getObject('global_settings') || {
     'quality':720, //Quality selected
     'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
-    'downloadTo':'browser' //Whether or not to use jDownload
+    'downloadTo':'browser', //Whether or not to use jDownload
+    'count':true
 }
 var jDownloadUrls = [];
 function UpdateGlobalSettings(){
@@ -91,7 +92,7 @@ var css = [
     ".coolfont{ background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;}",
     ".coolbutton{ margin-left:0.5em;display:inline-block;cursor:pointer;}",
     ".pointer{ cursor:pointer}",
-    ".coollink{ color:red; margin-left:1em}",
+    ".coollink{ color:red; margin-left:0.8em}",
     ".unselectable{ -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}",
     ".midalign{ vertical-align:middle;}",
     ".settingsWindow{ width:100%;height:200px;overflow-y:scroll;border:1px solid gray;border-width:1px 0;}",
@@ -256,7 +257,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
                 }
                 for (i = startIndex; i<startIndex+count; i++) indexes.push(i);
                 remain = indexes.length;
-                $("#"+params.id).attr("value", remain+" remaining");
+                if (global_settings.count) $("#"+params.id).attr("value", remain+" remaining");
 
                 //If the information for the first download is on the page....
                 if (params.first){
@@ -308,12 +309,18 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
 function MakeSettings(){
     var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>Settings</h1>");
     var $container = $("<div>", {class:"settingsWindow"}).append("<p>Below are some settings that can be used to configure the script. The settings for the script update as soon as a value is changed automatically, and this change carries across browser windows without the need to restart. Further help can be found at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader'>GitHub</a>.</p>");
-    
+    var checkboxes = [];
+
     $container.append("<h2>Filename parameters</h2>");
     var $remSubDub = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags');
     $container.append($remSubDub);
+    checkboxes.push("remSubDub");
 
-    $container.append("<h2>Download parameters</h2>");
+    $container.append("<h2>Downloading parameters</h2>");
+    var $count = MakeCheck('count', 'Use this checkbox toggle the counting down functionality', 'Enable Countdown');
+    $container.append($count);
+    checkboxes.push("count");
+
     var $downloadTo = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
         browser:{text:'Download with Browser'}, 
         idm:{text:'Download with IDM', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
@@ -331,7 +338,7 @@ function MakeSettings(){
     settingsBtn.click(function(){
         $(".helpToggle").hide();
         global_settings = localStorage.getObject('global_settings');
-        $("#remSubDub").prop("checked", global_settings.remSubDub);
+        for (i = 0; i<checkboxes.length; i++) $("#"+checkboxes[i]).prop("checked", global_settings[checkboxes[i]]);
         $("#downloadTo").find("input[value='"+global_settings.downloadTo+"']").attr("checked", "checked");
         light.enable();
     })
@@ -350,8 +357,8 @@ function MakeCheck(setting, info, label){ //Makes the boolean checkboxes
         UpdateGlobalSettings();
     });
 
-    $span = $("<span>").append($check).append("<br />");
-    return $span;
+    $div = $("<div>", {style:'padding:0.4em 0'}).append($check).append("<br />");
+    return $div;
 }
 function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
     var $radio = $("<form>", {id:setting, style:'margin-bottom:1em'});
@@ -386,8 +393,8 @@ function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
         UpdateGlobalSettings();
     });
 
-    $span = $("<span>", {html:label}).append($radio);
-    return $span;
+    $div = $("<div>", {html:label, style:'padding:0.4em 0'}).append($radio);
+    return $div;
 }
 
 $(document).mousedown(function(e){
@@ -509,7 +516,7 @@ $(document).ready(function(){
                 if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
 
                 remain--;
-                $("#"+e.data.buttonId).attr("value", remain+" remaining");
+                if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain+" remaining");
                 if (remain === 0){
                     $("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
                     if (global_settings.downloadTo = 'jDownload') ProcessJDownload();
