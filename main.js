@@ -80,7 +80,8 @@ var global_settings = localStorage.getObject('global_settings') || {
     'quality':720, //Quality selected
     'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
     'downloadTo':'browser', //Whether or not to use jDownload
-    'count':true
+    'count':true,
+    'drag':false
 }
 var jDownloadUrls = [];
 function UpdateGlobalSettings(){
@@ -266,6 +267,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
                 }
             } else if (params.handler === 'select'){ //If it is the select button
                 remain = indexes.length;
+                if (global_settings.count) $("#"+params.id).attr("value", remain+" remaining");
             }
 
             //Confirmation box
@@ -312,21 +314,23 @@ function MakeSettings(){
     var checkboxes = [];
 
     $container.append("<h2>Filename parameters</h2>");
-    var $remSubDub = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags');
-    $container.append($remSubDub);
+    $container = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags', {'appendTo':$container});
     checkboxes.push("remSubDub");
 
     $container.append("<h2>Downloading parameters</h2>");
-    var $count = MakeCheck('count', 'Use this checkbox toggle the counting down functionality', 'Enable Countdown');
-    $container.append($count);
+    $container = MakeCheck('count', 'Use this checkbox to toggle the counting down functionality', 'Enable Countdown', {'appendTo':$container});
     checkboxes.push("count");
 
-    var $downloadTo = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
+    $container = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
         browser:{text:'Download with Browser'}, 
         idm:{text:'Download with IDM', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
-        jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}});
-    $content.append($container.append($downloadTo));
+        jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}}, {appendTo:$container});
+ 
+    $container.append("<h2>Select settings</h2>");
+    $container = MakeCheck('drag', 'This checkbox toggles the ability to drag', 'Enable Drag Select', {'appendTo':$container, 'help':'This feature is experimental and allows the user to select from the series selection page using a drag. See the docs for more information.'})
+    checkboxes.push("drag");
 
+    $content.append($container);
     var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':0,'margin-top':'8px'}});
     $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
     closeBtn.click(function(){
@@ -343,8 +347,24 @@ function MakeSettings(){
         light.enable();
     })
 }
+function CheckHelp($element, object){
+    var object = object || '';
+    if (object['help']){
+        var $div = $("<div>", {style:"background-color:'green';html:object['help'];display:none;width:300px", html:object['help'], class:'helpToggle'});
+        var $a = $("<a>", {
+            html: "help?",
+            class: "pointer coollink"
+        }).click(function(){
+            $(this).next().find("div").slideToggle();
+            ($(this).html() === "help?") ? $(this).html("close") : $(this).html("help?");
+        })
+        $element.append($a).append($("<div>", {style:'display:inline-block'}).append($div));
+    }
+    return $element;
+}
 
-function MakeCheck(setting, info, label){ //Makes the boolean checkboxes
+function MakeCheck(setting, info, label, options){ //Makes the boolean checkboxes
+    var options = options || '';
     var $check = $("<label>", {title:info}).append($("<input>", {
         id:setting,
         type:'checkbox',
@@ -357,13 +377,17 @@ function MakeCheck(setting, info, label){ //Makes the boolean checkboxes
         UpdateGlobalSettings();
     });
 
-    $div = $("<div>", {style:'padding:0.4em 0'}).append($check).append("<br />");
+    $div = $("<div>", {style:'padding:0.4em 0'}).append($check)
+    $div = CheckHelp($div, options);
+    $div.append("<br />");
+
+    if (options.appendTo) return options.appendTo.append($div);
     return $div;
 }
-function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
-    var $radio = $("<form>", {id:setting, style:'margin-bottom:1em'});
-    for (var key in options){
-        if (options.hasOwnProperty(key)) {
+function MakeRadio(setting, label, choices, options){ //Makes the boolean checkboxes
+    var $radio = $("<form>", {id:setting});
+    for (var key in choices){
+        if (choices.hasOwnProperty(key)) {
             $button = $("<label>").append($("<input>", {
                 type:'radio',
                 name:setting,
@@ -371,19 +395,8 @@ function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
             }))
 
             $radio.append($button)
-            $button.html($button.html()+" "+options[key]['text'])
-            if (options[key]['help']){
-                $div = $("<div>", {style:"background-color:'green';html:options[key]['help'];display:none;width:300px", html:options[key]['help'], class:'helpToggle'});
-                $a = $("<a>", {
-                    html: "help?",
-                    class: "pointer coollink"
-                }).click(function(){
-                    $(this).next().find("div").slideToggle();
-                    ($(this).html() === "help?") ? $(this).html("close") : $(this).html("help?");
-                })
-                $radio.append($a).append($("<div>", {style:'display:inline-block'}).append($div));
-            }
-
+            $button.html($button.html()+" "+choices[key]['text'])
+            $radio = CheckHelp($radio, choices[key]);
             $radio.append("<br />");
 
         }
@@ -394,6 +407,7 @@ function MakeRadio(setting, label, options){ //Makes the boolean checkboxes
     });
 
     $div = $("<div>", {html:label, style:'padding:0.4em 0'}).append($radio);
+    if (options.appendTo) return options.appendTo.append($div);
     return $div;
 }
 
@@ -409,7 +423,7 @@ function MakeCheckboxes(){
 
     var length = $("table.listing tr:gt(1)").length;
     function MouseHandle(e, $this){
-        if (isDown || e.data.force){
+        if ((isDown && global_settings.drag) || e.data.force){
             var index = $this.find("input").attr("index");
             var newState = !$this.find("input").prop("checked");
             $this.find("input").prop("checked", newState);
@@ -532,9 +546,9 @@ $(document).ready(function(){
 function ProcessJDownload(){
     //centerDivVideo.after OR .episodelist.append
     if ($("#jDownload")) $("#jDownload").remove();
-    var $div = $("<textarea>", {id:"jDownload",text:jDownloadUrls.join("\n"),style:"white-space:nowrap;overflow:auto;width:90%;padding:1em;height:5em"})
+    var $div = $("<textarea>", {id:"jDownload",text:jDownloadUrls.join("\n"),style:"display:block;margin:1em auto;white-space:nowrap;overflow:auto;width:90%;padding:1em;height:5em"})
     if (currentWindow === 'episode') $("#centerDivVideo").after($div);
-    if (currentWindow === 'series') $(".episodelist").eq(0).append($div);
+    if (currentWindow === 'series') $("table.listing").before($div);
 
     $div.select();
 }
