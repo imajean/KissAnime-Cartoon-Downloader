@@ -428,7 +428,7 @@ function GetExtVid(url, titleText, id){ //Get the link for a new video
 }
 
 function GetVid(link, title){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
-    if (global_settings.checked === "true"){
+    if (global_settings.remSubDub === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
     }
     var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo}
