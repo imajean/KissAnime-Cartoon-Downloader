@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.25
+// @version      0.27
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -44,6 +44,31 @@ Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
     return value && JSON.parse(value);
 }
 
+function Lightbox(id, $content, css){
+    this.enable = function(){
+        $("#"+id+"_box").show();
+        $("#"+id+"_content").show();
+    }
+    this.disable = function(){
+        $("#"+id+"_box").hide();
+        $("#"+id+"_content").hide();
+    }
+    
+    var $box = $("<div>", {
+        style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.7",
+        id:id+'_box'
+    }).click(this.disable)
+    
+    $content.css("margin", "0.5em 1em").addClass("unselectable")
+    var $cont = $("<div>", {
+        id:id+"_content",
+        style:"display:none;background-color:white;position:fixed;width:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;"
+    }).append($content);
+    
+    if (css) $cont.css(css);
+    $("body").append($box).append($cont);
+}
+
 //Global
 var remain = 0;  //How many downloads remain...
 var eps = [];  //An array of the episode data
@@ -63,6 +88,7 @@ $("<style type='text/css'> .disabled{ cursor:default!important; color:black!impo
 $("<style type='text/css'> .coolfont{ background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;} </style>").appendTo("head");
 $("<style type='text/css'> .coolbutton{ margin-left:0.5em;display:inline-block;cursor:pointer} </style>").appendTo("head");
 $("<style type='text/css'> .unselectable{ -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;} </style>").appendTo("head");
+$("<style type='text/css'> .checkbox{ vertical-align:middle;} </style>").appendTo("head");
 
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
@@ -152,6 +178,7 @@ function MakeBar(page){
         MakeButton({first:true, id:"dlButton", text:"Download", handler:"main"});
         MakeQuality();
         MakeCheck();
+        MakeSettings();
     } else if (page === 'series'){
         $(".listing").before($("<div>", {id:'bar'}));
         bar = $("#bar");
@@ -188,9 +215,13 @@ function MakeButton(params){ //Makes the download button, params include id, tex
         type:"button",
         value:params.text,
         class:"coolfont coolbutton"
-    }).click(function(){MainDl($(this), params, indexes)});
+    })
     bar.append(button);
+    if (params.css) button.css(params.css);
     if (params.disabled) ButtonState(params.id, false);
+
+    if (params.handler) button.click(function(){MainDl($(this), params, indexes)})
+    if (!params.handler) return button;
     
     function MainDl($this, params, indexes){
         if ($this.hasClass("disabled") === false){
@@ -257,23 +288,41 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
     bar.append(multiple);
 }
 
-function MakeCheck(){ //Makes the boolean checkboxes (currently Remove Dub/Sub)
-    var check = $("<input>", {
-        id:'remSubDub',
+function MakeSettings(){
+    var $content = $("<div>").append("<center><h2>Settings</h2></center>");
+    var $container = $("<div>", {style:"width:100%;height:auto;overflow-y:scroll;border:1px solid black;border-width:1px 0"})
+    var $remSubDub = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags')
+    $content.append($container.append($remSubDub));
+    
+    var light = new Lightbox('settings', $content, {width:"400px",height:"300px",color:"black"});
+    var settingsBtn = MakeButton({text:"Settings"})
+    settingsBtn.click(function(){
+        global_settings = localStorage.getObject('global_settings');
+        $("#remSubDub").prop("checked", global_settings.remSubDub);
+        light.enable();
+    })
+}
+
+function MakeCheck(setting, info, label){ //Makes the boolean checkboxes
+    var $check = $("<input>", {
+        id:setting,
         type:'checkbox',
-        class:'unselectable',
+        class:'unselectable checkbox',
         style:'margin-left:0.8em;',
-        title:'Use this checkbox to rename the files with or without the (dub) and (sub) tags'
+        title:info
     });
-    if (global_settings.remSubDub === true) check.prop("checked", true);
-    check.change(function(){
-        global_settings.remSubDub = $('#remSubDub').is(':checked');
+    if (global_settings[setting] === true) $check.prop("checked", true);
+    $check.change(function(){
+        global_settings[setting] = $check.is(':checked');
         UpdateGlobalSettings();
     });
 
-    label = "<label for='remSubDub'> Remove Dub/Sub</label>";
-    bar.append(check);
-    $("#remSubDub").after(label);
+    var $label = $("<label>", {
+        for:setting,
+        html:" "+label
+    })
+    $span = $("<span>").append($check).append($label);
+    return $span;
 }
 
 $(document).mousedown(function(e){
@@ -283,8 +332,7 @@ $(document).mousedown(function(e){
 });
 
 function MakeCheckboxes(){
-    var style = ".checkbox{ vertical-align:middle;}";
-    style += " .hovered{ background:#660000!important;color:yellow}";
+    var style = " .hovered{ background:#660000!important;color:yellow}";
     $("<style type='text/css'>"+style+"</style>").appendTo("head");
 
     var length = $("table.listing tr:gt(1)").length;
