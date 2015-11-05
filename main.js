@@ -471,9 +471,14 @@ function MakeCheckboxes(){
 //------------------------------------------------------------------            MISC               -------------------------------------------------------------------------------------*/
 //Core downloading functions
 function DownloadCurrent(quality, buttonId){
-    var url = asp.wrap($("#selectQuality option:contains('"+quality.toString()+"')").attr("value"));
-    var titleText = $("title").text();
-    GetExtVid(url, titleText, buttonId);
+    if (!buttonId){
+        var url = asp.wrap($("#selectQuality option:contains('"+quality.toString()+"')").attr("value"));
+        var titleText = $("title").text();
+        GetExtVid(url, titleText, buttonId);
+    } else {
+        GetFromPage(document.documentElement.innerHTML, buttonId, '0');
+    }
+    
 }
 
 function DownloadVideos(indexes, buttonId){ //Where indexes refer to the indexes of the videos
@@ -515,7 +520,7 @@ function GetFromPage(xhr, buttonId, iframeId, interval){
     var url = asp.wrap(text);
     var titleText = xhr.split("<title>")[1].split("</title>")[0];
         
-    clearInterval(interval.interval);
+    if (interval) clearInterval(interval.interval);
     GetExtVid(url, titleText, buttonId, iframeId);
 }
 
@@ -524,7 +529,7 @@ function GetExtVid(url, titleText, buttonId, iframeId){ //Get the link for a new
     GetVid(url, title, buttonId, iframeId);
 }
 
-function GetVid(link, title, buttonId, iframeId){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
+function GetVid(link, title, buttonId, iframeId){ //Force the download to be started from an iframe
     if (global_settings.remSubDub === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
     }
@@ -571,6 +576,7 @@ $(document).ready(function(){
         if (e.origin){
             if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
                 $("#dlExt"+e.data.iframeId).remove();
+                console.log(e.data.url);
                 if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
 
                 remain--;
