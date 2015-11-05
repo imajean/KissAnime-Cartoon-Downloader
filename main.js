@@ -70,7 +70,7 @@ function Lightbox(id, $content, css){
 }
 
 //Global
-var currentWindow = null;
+var currentWindow = null; //The current window that is active
 var remain = 0;  //How many downloads remain...
 var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
@@ -149,7 +149,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
     currentWindow = "series";
     $.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
         MakeBar("series");
-        $(".episodeList").eq(0).find("div").eq(3).remove()
+        $(".episodeList").eq(0).find("div").eq(3).remove();
 
         $("#multSelect").change(function(){ //A handler for the changing of the first episode to download
             var amount = parseInt($("#multSelect option").length) - parseInt($("#multSelect").val(), 10);
@@ -194,7 +194,7 @@ function SaveToDisk(link, settings){
         window.location.href = save.href;
     }
 
-    var returnObj = {'id':settings.remain, 'buttonId':settings.id};
+    var returnObj = {'iframeId':settings.iframeId, 'buttonId':settings.buttonId};
     if (settings.downloadTo === 'jDownload') returnObj.url = save.href;
     setTimeout(function(){window.parent.postMessage(returnObj, settings.host);}, 500); //Iframe parent message    
 }
@@ -204,7 +204,7 @@ function MakeBar(page){
     if (page === 'episode'){
         bar = $('#selectPlayer').parent().parent(); //The bar that contains quality + download buttons
         MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
-        MakeButton({first:true, id:"dlButton", text:"Download", handler:"main"});
+        MakeButton({first:true, buttonId:"dlButton", text:"Download", handler:"main"});
         MakeQuality();
         MakeSettings();
     } else if (page === 'series'){
@@ -213,8 +213,8 @@ function MakeBar(page){
         MakeMultiple("multSelect", "Select the episode you would like to start downloading from");
         MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
         MakeQuality();
-        MakeButton({id:"dlButton", text:"Download", handler:"main"});
-        MakeButton({id:"dlButton_sel", text:"Download Selected", handler:"select", disabled:true});
+        MakeButton({buttonId:"dlButton", text:"Download", handler:"main"});
+        MakeButton({buttonId:"dlButton_sel", text:"Download Selected", handler:"select", disabled:true});
         MakeSettings();
         MakeCheckboxes();
     }
@@ -237,9 +237,9 @@ function MakeQuality(){ //Makes the quality switch
     }
 }
 
-function MakeButton(params){ //Makes the download button, params include id, text, handler, first, disabled
+function MakeButton(params){ //Makes the download button, params include buttonId, text, handler, first, disabled
     button = $("<input>", {
-        id:params.id,
+        id:params.buttonId,
         type:"button",
         value:params.text,
         defaultValue:params.text,
@@ -247,7 +247,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
     });
     if (!params.objectOnly) bar.append(button);
     if (params.css) button.css(params.css);
-    if (params.disabled) ButtonState(params.id, false);
+    if (params.disabled) ButtonState(params.buttonId, false);
 
     if (params.handler) button.click(function(){MainDl($(this), params, indexes)});
     if (!params.handler) return button;
@@ -256,7 +256,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
         if ($this.hasClass("disabled") === false){
             jDownloadUrls = [];
             if ($("#jDownload")) $("#jDownload").remove();
-            ButtonState(params.id, false);
+            ButtonState(params.buttonId, false);
             
             global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
             if (isNaN(global_settings.quality)) global_settings.quality = 720; //Temporary fix
@@ -271,16 +271,16 @@ function MakeButton(params){ //Makes the download button, params include id, tex
                 }
                 for (i = startIndex; i<startIndex+count; i++) indexes.push(i);
                 remain = indexes.length;
-                if (global_settings.count) $("#"+params.id).attr("value", remain+" remaining");
+                if (global_settings.count) $("#"+params.buttonId).attr("value", remain+" remaining");
 
                 //If the information for the first download is on the page....
                 if (params.first){
                     indexes.shift(); //Removes first item from array
-                    DownloadCurrent(global_settings.quality, params.id); //This also decrements remain when found...
+                    DownloadCurrent(global_settings.quality, params.buttonId); //This also decrements remain when found...
                 }
             } else if (params.handler === 'select'){ //If it is the select button
                 remain = indexes.length;
-                if (global_settings.count) $("#"+params.id).attr("value", remain+" remaining");
+                if (global_settings.count) $("#"+params.buttonId).attr("value", remain+" remaining");
             }
 
             //Confirmation box
@@ -288,7 +288,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
                 window.onbeforeunload = function() {
                     return "Leaving this page will cancel some of your downloads!";
                 };
-                DownloadVideos(indexes, params.id); //Download the videos with the given indexes
+                DownloadVideos(indexes, params.buttonId); //Download the videos with the given indexes
             }
             
         }
@@ -469,16 +469,16 @@ function MakeCheckboxes(){
 
 //------------------------------------------------------------------            MISC               -------------------------------------------------------------------------------------*/
 //Core downloading functions
-function DownloadCurrent(quality, id){
+function DownloadCurrent(quality, buttonId){
     var url = asp.wrap($("#selectQuality option:contains('"+quality.toString()+"')").attr("value"));
     var titleText = $("title").text();
-    GetExtVid(url, titleText, id);
+    GetExtVid(url, titleText, buttonId);
 }
 
-function DownloadVideos(indexes, id){ //Where indexes refer to the indexes of the videos
+function DownloadVideos(indexes, buttonId){ //Where indexes refer to the indexes of the videos
     indexes.sort(sortNumber);
     for (var i = 0; i<indexes.length; i++){ //Download the videos
-        CreateAnother(indexes[i], id);
+        CreateAnother(indexes[i], buttonId, buttonId+"_"+indexes[i]);
     }
 }
 
@@ -486,42 +486,63 @@ function sortNumber(a,b) {
     return Number(a) - Number(b);
 }
 
-function CreateAnother(index, id){
+function CreateAnother(index, buttonId, iframeId){
     var newUrl = eps[index];
-    $.get(newUrl, function(xhr){
-        var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
-        var url = asp.wrap($div.find('option:contains("'+global_settings.quality.toString()+'")').attr('value'));
-        var titleText = xhr.split("<title>")[1].split("</title>")[0];
-        GetExtVid(url, titleText, id);
-    });
+    var interval = {'lastRemain':remain, 'exec':0, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId};
+    interval.getCheck = function(){ //ClearInterval is done externally
+        if (remain !== this.lastRemain){
+            this.lastRemain = remain;
+            return;
+        }
+        this.req.abort();
+        this.req = ($.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)}));
+        this.exec += 1;
+        if (this.exec > 1) console.log("(get): Something is going on with: "+this.iframeId+". Check this URL:"+this.newUrl);
+    }
+
+    interval.interval = setInterval(function(){interval.getCheck()}, 10000);
+    interval.req = $.get(newUrl, function(xhr){GetFromPage(xhr, buttonId, iframeId, interval)});
 }
 
-function GetExtVid(url, titleText, id){ //Get the link for a new video
+function GetFromPage(xhr, buttonId, iframeId, interval){
+    var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
+    var text = $div.find('option:contains("'+global_settings.quality.toString()+'")').attr("value");
+    if (text === undefined){
+        text = $div.find('option').eq(0).attr("value")
+        if (text === undefined) return;
+    }
+    var url = asp.wrap(text);
+    var titleText = xhr.split("<title>")[1].split("</title>")[0];
+        
+    clearInterval(interval.interval);
+    GetExtVid(url, titleText, buttonId, iframeId);
+}
+
+function GetExtVid(url, titleText, buttonId, iframeId){ //Get the link for a new video
     var title = (titleText.split("- Watch")[0].replace(/\n/g, " ")).trim();
-    GetVid(url, title, id);
+    GetVid(url, title, buttonId, iframeId);
 }
 
-var intervals = [];
-function GetVid(link, title, id){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
+function GetVid(link, title, buttonId, iframeId){ //Force the download to be started from an iframe (why not do this locally? The file doesn't name properly, can't find fix!)
     if (global_settings.remSubDub === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
     }
-    var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo, "id":id};
-    iframe = $("<iframe>", { //Send video to other script to be downloaded.
+    var settings = {"title":encodeURIComponent(title), "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo, "buttonId":buttonId, "iframeId":iframeId};
+    var $iframe = $("<iframe>", { //Send video to other script to be downloaded.
         src: link + "#" + JSON.stringify(settings),
         style: "width:0;height:0",
-        id: 'dlExt'+remain,
+        id: 'dlExt'+iframeId,
         class: 'extVid'
     });
-    $("body").append(iframe);
+    $("body").append($iframe);
 
-    
-    eval("var remain_"+remain+" = "+remain)
-    eval("var intervals_"+remain+" = setInterval(function(){IframeReloader(remain_"+remain+")}, 5000)");
-
-    function IframeReloader(remain){
-        ($("#dlExt"+remain).length > 0) ? $('#dlExt'+remain).attr("src", $('#dlExt'+remain).attr("src")) : eval("clearInterval(intervals_"+remain+")");
+    var interval = {exec:0, id:iframeId, title:title, url:$iframe.attr("src")};
+    interval.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId) 
+        ($("#dlExt"+this.id).length > 0) ? $('#dlExt'+this.id).attr("src", $('#dlExt'+this.id).attr("src")) : clearInterval(this.interval);
+        this.exec += 1;
+        if (this.exec > 1) console.log("(iframe redirect): Something is going on with: "+this.title+" at the URL:"+this.url)
     }
+    interval.interval = setInterval(function(){interval.iframeCheck()}, 5000);
 }
 
 function ButtonState(id, enable){
@@ -548,7 +569,7 @@ $(document).ready(function(){
     eventer(messageEvent, function (e){
         if (e.origin){
             if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
-                $("#dlExt"+e.data.id).remove();
+                $("#dlExt"+e.data.iframeId).remove();
                 if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
 
                 remain--;
