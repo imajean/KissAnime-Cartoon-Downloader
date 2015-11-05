@@ -191,7 +191,7 @@ function MakeBar(page){
     if (page === 'episode'){
         bar = $('#selectPlayer').parent().parent(); //The bar that contains quality + download buttons
         MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
-        MakeButton({first:true, buttonId:"dlButton", text:"Download", handler:"main"});
+        MakeButton({first:true, id:"dlButton", text:"Download", handler:"main"});
         MakeQuality();
         MakeSettings();
     } else if (page === 'series'){
@@ -200,8 +200,8 @@ function MakeBar(page){
         MakeMultiple("multSelect", "Select the episode you would like to start downloading from");
         MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
         MakeQuality();
-        MakeButton({buttonId:"dlButton", text:"Download", handler:"main"});
-        MakeButton({buttonId:"dlButton_sel", text:"Download Selected", handler:"select", disabled:true});
+        MakeButton({id:"dlButton", text:"Download", handler:"main"});
+        MakeButton({id:"dlButton_sel", text:"Download Selected", handler:"select", disabled:true});
         MakeSettings();
         MakeCheckboxes();
     }
@@ -226,15 +226,17 @@ function MakeQuality(){ //Makes the quality switch
 
 function MakeButton(params){ //Makes the download button, params include buttonId, text, handler, first, disabled
     button = $("<input>", {
-        id:params.buttonId,
+        id:params.id,
         type:"button",
         value:params.text,
         defaultValue:params.text,
         class:"coolfont coolbutton"
     });
+    params.buttonId = params.id;
     if (!params.objectOnly) bar.append(button);
     if (params.css) button.css(params.css);
     if (params.disabled) ButtonState(params.buttonId, false);
+
 
     if (params.handler) button.click(function(){MainDl($(this), params, indexes)});
     if (!params.handler) return button;
@@ -244,6 +246,7 @@ function MakeButton(params){ //Makes the download button, params include buttonI
             jDownloadUrls = [];
             if ($("#jDownload")) $("#jDownload").remove();
             ButtonState(params.buttonId, false);
+            ButtonState("settingsBtn", false);
             
             global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
             UpdateGlobalSettings();
@@ -339,7 +342,7 @@ function MakeSettings(){
     checkboxes.push("fade");
     
     var light = new Lightbox('Settings', $container);
-    var settingsBtn = MakeButton({text:"Settings"});
+    var settingsBtn = MakeButton({text:"Settings", id:"settingsBtn"});
     settingsBtn.click(function(){
         $(".helpToggle").hide();
         global_settings = localStorage.getObject('global_settings');
@@ -594,7 +597,7 @@ $(document).ready(function(){
                     $("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
                     if (global_settings.downloadTo === 'jDownload') ProcessJDownload();
                     window.onbeforeunload = null; //Remove leave confirmation
-                    setTimeout(function(){ButtonState(e.data.buttonId, true)}, 500); //Reset the button
+                    setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
                 } 
             }
             
