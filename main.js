@@ -56,6 +56,7 @@ Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
     return value && JSON.parse(value);
 };
 //Global
+var errors = 0;
 var keys = []; //Active keys
 var isDown = false; //A flag that represents if the mouse is down or not
 var currentWindow = null; //The current window that is active
@@ -71,7 +72,8 @@ var default_setings = {
     'count':true,
     'select':'shift',
     'maxQuality':false,
-    'fade':false
+    'fade':false,
+    'timeout':5000
 };
 
 for (var key in default_setings){
@@ -322,42 +324,32 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
 
 function MakeSettings(){
     var $container = $("<div>", {class:"settingsWindow"}).append("<p>Below are some settings that can be used to configure the script. The settings for the script update as soon as a value is changed automatically, and this change carries across browser windows without the need to restart. Further help can be found at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader'>GitHub</a>.</p>");
-    var checkboxes = [];
-    var radios = [];
 
     $container.append("<h2>Filename parameters</h2>");
     $container = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags', {'appendTo':$container});
-    checkboxes.push("remSubDub");
 
     $container.append("<h2>Downloading parameters</h2>");
     $container = MakeCheck('count', 'Use this checkbox to toggle the counting down functionality', 'Enable Countdown', {'appendTo':$container});
-    checkboxes.push("count");
     $container = MakeCheck('maxQuality', 'Use this checkbox to force the maximum quality to be downloaded', 'Force Max Quality', {'appendTo':$container, 'help':'This option <b>overrides</b> the manual quality setting'});
-    checkboxes.push("maxQuality");
 
     $container = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
         browser:{text:'Download with Browser', info:'Use the browser to download your files'}, 
         idm:{text:'Download with IDM', info:'Use Internet Download Manager to download your files', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
         jDownload:{text:'Download with JDownloader', info:'Acquire a group of links to paste into JDownloader 2', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}}, {appendTo:$container});
-    radios.push('downloadTo');
 
     $container.append("<h2>Select settings</h2>");
     $container = MakeRadio('select', 'Choose your selection method:', {
         drag:{text:'Drag Select', info:'Toggle the selection of episodes by dragging over them', help:'This does not work when the mouse is moving quickly'}, 
         shift:{text:'Shift Select', info:'Use shift key to assist in selecting episodes', help:'Allows the use of shift key to select the range of videos from the selection screen'}}, {appendTo:$container});
-    radios.push('select');
 
     $container.append("<h2>Miscellaneous</h2>");
     $container = MakeCheck('fade', 'Toggle the fading animations of the lightboxes', 'Enable Fading Animation', {'appendTo':$container});
-    checkboxes.push("fade");
     
     var light = new Lightbox('Settings', $container);
     var settingsBtn = MakeButton({text:"Settings", id:"settingsBtn"});
     settingsBtn.click(function(){
         $(".helpToggle").hide();
         global_settings = localStorage.getObject('global_settings');
-        for (i = 0; i<checkboxes.length; i++) $("#"+checkboxes[i]).prop("checked", global_settings[checkboxes[i]]);
-        for (i = 0; i<radios.length; i++) $("#"+radios[i]).find("input[value='"+global_settings[radios[i]]+"']").attr("checked", "checked");
         light.enable();
     });
 }
@@ -383,7 +375,8 @@ function MakeCheck(setting, info, label, options){ //Makes the boolean checkboxe
     var $check = $("<label>", {title:info}).append($("<input>", {
         id:setting,
         type:'checkbox',
-        class:'unselectable midalign'
+        class:'unselectable midalign',
+        checked:global_settings[setting]
     }));
     $check.html($check.html() + " "+label);
 
@@ -417,6 +410,7 @@ function MakeRadio(setting, label, choices, options){ //Makes the boolean checkb
             $radio.append("<br />");
         }
     }
+    $radio.find("input[value='"+global_settings[setting]+"']").attr("checked", "checked");
     $(document).on("change", "input[name="+setting+"]:radio", function(){
         global_settings[setting] = $(this).attr("value");
         UpdateGlobalSettings();
@@ -517,19 +511,22 @@ function sortNumber(a,b) {
 
 function CreateAnother(index, buttonId, iframeId){
     var newUrl = eps[index];
-    var interval = {'lastRemain':remain, 'exec':0, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId};
+    var interval = new Object({'lastRemain':remain, 'exec':0, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId});
     interval.getCheck = function(){ //ClearInterval is done externally
         if (remain !== this.lastRemain){
             this.lastRemain = remain;
             return;
         }
         this.req.abort();
-        this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)});
         this.exec += 1;
-        if (this.exec > 1) Error("(getCheck): Something is going on with: "+this.iframeId+". Check this URL:"+this.newUrl);
+        if (this.exec > 1){
+            errors += 1, clearInterval(this.interval), Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the captcha <a href='"+this.newUrl+"'>here</a> and try again.");
+        } else {
+            this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)});
+        }
     };
 
-    interval.interval = setInterval(function(){interval.getCheck()}, 5000);
+    interval.interval = setInterval(function(){interval.getCheck()}, global_settings.timeout);
     interval.req = $.get(newUrl, function(xhr){GetFromPage(xhr, buttonId, iframeId, interval)});
 }
 
@@ -560,18 +557,18 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
     var $iframe = $("<iframe>", { //Send video to other script to be downloaded.
         src: link + "#" + JSON.stringify(settings),
         style: "width:0;height:0",
-        id: 'dlExt'+iframeId,
+        id: iframeId,
         class: 'extVid'
     });
     $("body").append($iframe);
 
-    var interval = {exec:0, id:iframeId, title:title, url:$iframe.attr("src")};
-    interval.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId) 
+    var interval = new Object({exec:0, id:iframeId, title:title, url:$iframe.attr("src")});
+    interval.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
         ($("#dlExt"+this.id).length > 0) ? $('#dlExt'+this.id).attr("src", $('#dlExt'+this.id).attr("src")) : clearInterval(this.interval);
         this.exec += 1;
-        if (this.exec > 1) Error("(iframeCheck): Something is going on with: "+this.title+" at the URL:"+this.url);
+        if (this.exec > 1) errors += 1, clearInterval(this.interval), Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the timeout amount in the settings to fix this");
     };
-    interval.interval = setInterval(function(){interval.iframeCheck()}, 5000);
+    interval.interval = setInterval(function(){interval.iframeCheck()}, global_settings.timeout);
 }
 
 function ButtonState(id, enable){
@@ -630,13 +627,14 @@ function SortJDownload(a, b){
 //Misc functions
 function Lightbox(id, $container, params){
     var params = params || {};
+    var count = (params.count) ? "_"+params.count.toString() : "";
     this.enable = function(){
-        (global_settings.fade) ? $("#"+id+"_box").stop().fadeIn() : $("#"+id+"_box").show();
-        (global_settings.fade) ? $("#"+id+"_content").stop().fadeIn() : $("#"+id+"_content").show();
+        (global_settings.fade) ? $("#"+id+count+"_box").stop().fadeIn() : $("#"+id+count+"_box").show();
+        (global_settings.fade) ? $("#"+id+count+"_content").stop().fadeIn() : $("#"+id+count+"_content").show();
     };
     this.disable = function(){
-        (global_settings.fade) ? $("#"+id+"_box").stop().fadeOut() : $("#"+id+"_box").hide();
-        (global_settings.fade) ? $("#"+id+"_content").stop().fadeOut() : $("#"+id+"_content").hide()
+        (global_settings.fade) ? $("#"+id+count+"_box").stop().fadeOut() : $("#"+id+count+"_box").hide();
+        (global_settings.fade) ? $("#"+id+count+"_content").stop().fadeOut() : $("#"+id+count+"_content").hide()
     };
 
     var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>"+id+"</h1>");
@@ -648,12 +646,12 @@ function Lightbox(id, $container, params){
     
     var $box = $("<div>", {
         style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8;z-index:99",
-        id:id+'_box'
+        id:id+count+'_box'
     }).click(this.disable);
     
     $content.css("margin", "0.5em 1em").addClass("unselectable");
     var $wrap = $("<div>", {
-        id:id+"_content",
+        id:id+count+"_content",
         style:"color:black;display:none;background-color:white;position:fixed;width:400px;height:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;z-index:100"
     }).append($content);
     
@@ -666,7 +664,7 @@ function Lightbox(id, $container, params){
 function Error(text){
     var $container = $("<div>", {class:"settingsWindow"}).append("<p>You have encountered an error. Please send details of this error to the developer at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader/feedback'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader/issues'>GitHub</a>.</p>");
     $container.append($("<p>", {html:text}));
-    var light = new Lightbox("Error", $container, {'selectable':true});
+    var light = new Lightbox("Error", $container, {'selectable':true, 'count':errors});
     light.enable();
 }
 
