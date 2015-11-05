@@ -57,7 +57,8 @@ var default_setings = {
     'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
     'downloadTo':'browser', //Whether or not to use jDownload
     'count':true,
-    'drag':false
+    'drag':false,
+    'maxQuality':false
 };
 
 for (var key in default_setings){
@@ -93,9 +94,6 @@ $("<style type='text/css'>"+css.join("\n")+"</style>").appendTo("head");
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
 if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").length > 0){
     currentWindow = "episode";
-    //Quality fix (login error, due to dependency on localStorage)
-    if (isNaN(global_settings.quality)) global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
-    UpdateGlobalSettings();
 
     //Fix styling
     $("#selectPlayer option").each(function(){
@@ -234,7 +232,6 @@ function MakeButton(params){ //Makes the download button, params include buttonI
             ButtonState(params.buttonId, false);
             
             global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
-            if (isNaN(global_settings.quality)) global_settings.quality = 720; //Temporary fix
             UpdateGlobalSettings();
 
             if (params.handler === 'main'){ //If it is the button from the main bar
@@ -307,6 +304,8 @@ function MakeSettings(){
     $container.append("<h2>Downloading parameters</h2>");
     $container = MakeCheck('count', 'Use this checkbox to toggle the counting down functionality', 'Enable Countdown', {'appendTo':$container});
     checkboxes.push("count");
+    $container = MakeCheck('maxQuality', 'Use this checkbox to force the maximum quality to be downloaded', 'Force Max Quality', {'appendTo':$container});
+    checkboxes.push("maxQuality");
 
     $container = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
         browser:{text:'Download with Browser'}, 
@@ -475,7 +474,7 @@ function CreateAnother(index, buttonId, iframeId){
 function GetFromPage(xhr, buttonId, iframeId, interval){
     var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
     var text = $div.find('option:contains("'+global_settings.quality.toString()+'")').attr("value");
-    if (text === undefined){
+    if (text === undefined || global_settings.maxQuality){
         text = $div.find('option').eq(0).attr("value")
         if (text === undefined) return;
     }
