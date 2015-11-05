@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.30
+// @version      0.31
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -43,7 +43,6 @@ Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
     var value = this.getItem(key);
     return value && JSON.parse(value);
 };
-
 //Global
 var keys = []; //Active keys
 var isDown = false; //A flag that represents if the mouse is down or not
@@ -60,6 +59,7 @@ var default_setings = {
     'count':true,
     'select':'shift',
     'maxQuality':false,
+    'fade':false
 };
 
 for (var key in default_setings){
@@ -82,7 +82,7 @@ var css = [
     ".coolbutton{ margin-left:0.5em;display:inline-block;cursor:pointer;}",
     ".pointer{ cursor:pointer}",
     ".coollink{ color:red; margin-left:0.8em}",
-    ".unselectable{ -webkit-user-select: none;-moz-user-select: none;-ms-user-select: none;}",
+    ".unselectable{ -webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;}",
     ".midalign{ vertical-align:middle;}",
     ".settingsWindow{ width:100%;height:200px;overflow-y:scroll;border:1px solid gray;border-width:1px 0;}",
     ".settingsWindow a{ color:red}",
@@ -123,7 +123,6 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
     currentWindow = "series";
     $.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
         MakeBar("series");
-        $(".episodeList").eq(0).find("div").eq(3).remove();
 
         $("#multSelect").change(function(){ //A handler for the changing of the first episode to download
             var amount = parseInt($("#multSelect option").length) - parseInt($("#multSelect").val(), 10);
@@ -181,6 +180,7 @@ function MakeBar(page){
         MakeButton({first:true, buttonId:"dlButton", text:"Download", handler:"main"});
         MakeQuality();
         MakeSettings();
+
     } else if (page === 'series'){
         $(".listing").before($("<div>", {id:'bar'}));
         bar = $("#bar");
@@ -310,16 +310,20 @@ function MakeSettings(){
     checkboxes.push("maxQuality");
 
     $container = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
-        browser:{text:'Download with Browser'}, 
-        idm:{text:'Download with IDM', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
-        jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}}, {appendTo:$container});
+        browser:{text:'Download with Browser', info:'Use the browser to download your files'}, 
+        idm:{text:'Download with IDM', info:'Use Internet Download Manager to download your files', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
+        jDownload:{text:'Download with JDownloader', info:'Acquire a group of links to paste into JDownloader 2', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}}, {appendTo:$container});
     radios.push('downloadTo');
 
     $container.append("<h2>Select settings</h2>");
     $container = MakeRadio('select', 'Choose your selection method:', {
-        drag:{text:'Drag Select', help:'This does not work when the mouse is moving quickly'}, 
-        shift:{text:'Shift Select', help:'Allows the use of shift key to select the range of videos from the selection screen'}}, {appendTo:$container});
+        drag:{text:'Drag Select', info:'Toggle the selection of episodes by dragging over them', help:'This does not work when the mouse is moving quickly'}, 
+        shift:{text:'Shift Select', info:'Use shift key to assist in selecting episodes', help:'Allows the use of shift key to select the range of videos from the selection screen'}}, {appendTo:$container});
     radios.push('select');
+
+    $container.append("<h2>Miscellaneous</h2>");
+    $container = MakeCheck('fade', 'Toggle the fading animations of the lightboxes', 'Enable Fading Animation', {'appendTo':$container});
+    checkboxes.push("fade");
     
     var light = new Lightbox('Settings', $container);
     var settingsBtn = MakeButton({text:"Settings"});
@@ -333,9 +337,9 @@ function MakeSettings(){
 }
 
 function CheckHelp($element, object){
-    var object = object || '';
-    if (object['help']){
-        var $div = $("<div>", {style:"background-color:'green';html:object['help'];display:none;width:300px", html:object['help'], class:'helpToggle'});
+    var object = object || {};
+    if (object.help){
+        var $div = $("<div>", {style:"background-color:'green';display:none;width:300px", html:object.help, class:'helpToggle'});
         var $a = $("<a>", {
             html: "help?",
             class: "pointer coollink"
@@ -349,7 +353,7 @@ function CheckHelp($element, object){
 }
 
 function MakeCheck(setting, info, label, options){ //Makes the boolean checkboxes
-    var options = options || '';
+    var options = options || {};
     var $check = $("<label>", {title:info}).append($("<input>", {
         id:setting,
         type:'checkbox',
@@ -373,17 +377,18 @@ function MakeRadio(setting, label, choices, options){ //Makes the boolean checkb
     var $radio = $("<form>", {id:setting});
     for (var key in choices){
         if (choices.hasOwnProperty(key)){
-            $button = $("<label>").append($("<input>", {
+            var choice = choices[key];
+            var info = choice.info || '';
+            $button = $("<label>", {title:info}).append($("<input>", {
                 type:'radio',
                 name:setting,
                 value:key
             }));
 
             $radio.append($button);
-            $button.html($button.html()+" "+choices[key]['text']);
-            $radio = CheckHelp($radio, choices[key]);
+            $button.html($button.html()+" "+choice.text);
+            $radio = CheckHelp($radio, choice);
             $radio.append("<br />");
-
         }
     }
     $(document).on("change", "input[name="+setting+"]:radio", function(){
@@ -445,7 +450,6 @@ function MakeCheckboxes(){
         }
         return index;
     }
-    
 
     var length = $("table.listing tr:gt(1)").length;
     $("table.listing tr:gt(1)").each(function(){
@@ -490,10 +494,10 @@ function CreateAnother(index, buttonId, iframeId){
             return;
         }
         this.req.abort();
-        this.req = ($.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)}));
+        this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)});
         this.exec += 1;
         if (this.exec > 1) Error("(getCheck): Something is going on with: "+this.iframeId+". Check this URL:"+this.newUrl);
-    }
+    };
 
     interval.interval = setInterval(function(){interval.getCheck()}, 5000);
     interval.req = $.get(newUrl, function(xhr){GetFromPage(xhr, buttonId, iframeId, interval)});
@@ -503,7 +507,7 @@ function GetFromPage(xhr, buttonId, iframeId, interval){
     var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
     var text = $div.find('option:contains("'+global_settings.quality.toString()+'")').attr("value");
     if (text === undefined || global_settings.maxQuality){
-        text = $div.find('option').eq(0).attr("value")
+        text = $div.find('option').eq(0).attr("value");
         if (text === undefined) return;
     }
     var url = asp.wrap(text);
@@ -535,8 +539,8 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
     interval.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId) 
         ($("#dlExt"+this.id).length > 0) ? $('#dlExt'+this.id).attr("src", $('#dlExt'+this.id).attr("src")) : clearInterval(this.interval);
         this.exec += 1;
-        if (this.exec > 1) Error("(iframeCheck): Something is going on with: "+this.title+" at the URL:"+this.url)
-    }
+        if (this.exec > 1) Error("(iframeCheck): Something is going on with: "+this.title+" at the URL:"+this.url);
+    };
     interval.interval = setInterval(function(){interval.iframeCheck()}, 5000);
 }
 
@@ -597,12 +601,12 @@ function SortJDownload(a, b){
 function Lightbox(id, $container, params){
     var params = params || {};
     this.enable = function(){
-        $("#"+id+"_box").show();
-        $("#"+id+"_content").show();
+        (global_settings.fade) ? $("#"+id+"_box").stop().fadeIn() : $("#"+id+"_box").show();
+        (global_settings.fade) ? $("#"+id+"_content").stop().fadeIn() : $("#"+id+"_content").show();
     };
     this.disable = function(){
-        $("#"+id+"_box").hide();
-        $("#"+id+"_content").hide();
+        (global_settings.fade) ? $("#"+id+"_box").stop().fadeOut() : $("#"+id+"_box").hide();
+        (global_settings.fade) ? $("#"+id+"_content").stop().fadeOut() : $("#"+id+"_content").hide()
     };
 
     var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>"+id+"</h1>");
@@ -613,14 +617,14 @@ function Lightbox(id, $container, params){
     closeBtn.click(this.disable);
     
     var $box = $("<div>", {
-        style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8",
+        style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8;z-index:99",
         id:id+'_box'
     }).click(this.disable);
     
     $content.css("margin", "0.5em 1em").addClass("unselectable");
     var $wrap = $("<div>", {
         id:id+"_content",
-        style:"color:black;display:none;background-color:white;position:fixed;width:400px;height:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;"
+        style:"color:black;display:none;background-color:white;position:fixed;width:400px;height:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;z-index:100"
     }).append($content)
     
     if (params.wrapCss) $wrap.css(params.wrapCss);
