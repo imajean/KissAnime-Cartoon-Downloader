@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.27
+// @version      0.28
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -52,7 +52,7 @@ function Lightbox(id, $content, css){
     this.disable = function(){
         $("#"+id+"_box").hide();
         $("#"+id+"_content").hide();
-    }
+    };
     
     var $box = $("<div>", {
         style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8",
@@ -76,13 +76,22 @@ var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
 var isDown = false; //A flag that represents if the mouse is down or not
 var bar;
-var global_settings = localStorage.getObject('global_settings') || {
+var global_settings = localStorage.getObject('global_settings');
+var default_setings = {
     'quality':720, //Quality selected
     'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
     'downloadTo':'browser', //Whether or not to use jDownload
     'count':true,
     'drag':false
 };
+
+for (var key in default_setings){
+    if (default_setings.hasOwnProperty(key)){
+        if (global_settings[key] === undefined){
+            global_settings[key] = default_setings[key];
+        }
+    }
+}
 
 var jDownloadUrls = [];
 function UpdateGlobalSettings(){
@@ -244,6 +253,7 @@ function MakeButton(params){ //Makes the download button, params include id, tex
     function MainDl($this, params, indexes){
         if ($this.hasClass("disabled") === false){
             jDownloadUrls = [];
+            if ($("#jDownload")) $("#jDownload").remove();
             ButtonState(params.id, false);
             
             global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
@@ -358,7 +368,7 @@ function CheckHelp($element, object){
         }).click(function(){
             $(this).next().find("div").slideToggle();
             ($(this).html() === "help?") ? $(this).html("close") : $(this).html("help?");
-        })
+        });
         $element.append($a).append($("<div>", {style:'display:inline-block'}).append($div));
     }
     return $element;
@@ -378,7 +388,7 @@ function MakeCheck(setting, info, label, options){ //Makes the boolean checkboxe
         UpdateGlobalSettings();
     });
 
-    $div = $("<div>", {style:'padding:0.4em 0'}).append($check)
+    $div = $("<div>", {style:'padding:0.4em 0'}).append($check);
     $div = CheckHelp($div, options);
     $div.append("<br />");
 
@@ -494,7 +504,7 @@ function GetVid(link, title, id){ //Force the download to be started from an ifr
     if (global_settings.remSubDub === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
     }
-    var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo, "id":id}
+    var settings = {"title":encodeURIComponent(title), "remain":remain, "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo, "id":id};
     iframe = $("<iframe>", { //Send video to other script to be downloaded.
         src: link + "#" + JSON.stringify(settings),
         style: "width:0;height:0",
@@ -555,10 +565,14 @@ $(document).ready(function(){
 
 function ProcessJDownload(){
     //centerDivVideo.after OR .episodelist.append
-    if ($("#jDownload")) $("#jDownload").remove();
+    jDownloadUrls.sort(SortJDownload);
     var $div = $("<textarea>", {id:"jDownload",text:jDownloadUrls.join("\n"),style:"display:block;margin:1em auto;white-space:nowrap;overflow:auto;width:90%;padding:1em;height:5em"});
     if (currentWindow === 'episode') $("#centerDivVideo").after($div);
     if (currentWindow === 'series') $("table.listing").before($div);
 
     $div.select();
+}
+
+function SortJDownload(a, b){
+    return Number(a.split("Episode%20")[0].substr(0,3)) - Number(b.split("Episode%20")[0].substr(0,3));
 }
