@@ -44,47 +44,6 @@ Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
     return value && JSON.parse(value);
 };
 
-function Lightbox(id, $content, params){
-    var params = params || {};
-    this.enable = function(){
-        $("#"+id+"_box").show();
-        $("#"+id+"_content").show();
-    };
-    this.disable = function(){
-        $("#"+id+"_box").hide();
-        $("#"+id+"_content").hide();
-    };
-    
-    var $box = $("<div>", {
-        style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8",
-        id:id+'_box'
-    }).click(this.disable);
-    
-    $content.css("margin", "0.5em 1em").addClass("unselectable");
-    var $wrap = $("<div>", {
-        id:id+"_content",
-        style:"color:black;display:none;background-color:white;position:fixed;width:400px;height:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;"
-    }).append($content)
-    
-    if (params.wrapCss) $wrap.css(params.wrapCss);
-    if (params.contCss) $content.css(params.contCss);
-    if (params.selectable) $content.removeClass("unselectable");
-    $("body").append($box).append($wrap);
-}
-
-function Error($content){
-    $
-}
-
-function LockScroll($element){
-    $element.bind("mousewheel DOMMouseScroll", function(e){
-        var up = (e.originalEvent.wheelDelta > 0 || e.originalEvent.detail < 0);
-        if ((Math.abs(this.scrollTop - (this.scrollHeight - $(this).height())) < 3 && !up) || (this.scrollTop === 0 && up)){
-            e.preventDefault();
-        }
-    });
-}
-
 //Global
 var currentWindow = null; //The current window that is active
 var remain = 0;  //How many downloads remain...
@@ -338,11 +297,8 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
 }
 
 function MakeSettings(){
-    var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>Settings</h1>");
     var $container = $("<div>", {class:"settingsWindow"}).append("<p>Below are some settings that can be used to configure the script. The settings for the script update as soon as a value is changed automatically, and this change carries across browser windows without the need to restart. Further help can be found at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader'>GitHub</a>.</p>");
     var checkboxes = [];
-
-    LockScroll($container);
 
     $container.append("<h2>Filename parameters</h2>");
     $container = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags', {'appendTo':$container});
@@ -360,15 +316,8 @@ function MakeSettings(){
     $container.append("<h2>Select settings</h2>");
     $container = MakeCheck('drag', 'This checkbox toggles the ability to drag', 'Enable Drag Select', {'appendTo':$container, 'help':'This feature is experimental and allows the user to select from the series selection page using a drag. See the docs for more information.'});
     checkboxes.push("drag");
-
-    $content.append($container);
-    var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':'auto','margin-top':'8px'}});
-    $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
-    closeBtn.click(function(){
-        light.disable();
-    });
     
-    var light = new Lightbox('settings', $content);
+    var light = new Lightbox('Settings', $container);
     var settingsBtn = MakeButton({text:"Settings"});
     settingsBtn.click(function(){
         $(".helpToggle").hide();
@@ -516,10 +465,10 @@ function CreateAnother(index, buttonId, iframeId){
         this.req.abort();
         this.req = ($.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)}));
         this.exec += 1;
-        if (this.exec > 1) console.log("(get): Something is going on with: "+this.iframeId+". Check this URL:"+this.newUrl);
+        if (this.exec > 1) Error("(getCheck): Something is going on with: "+this.iframeId+". Check this URL:"+this.newUrl);
     }
 
-    interval.interval = setInterval(function(){interval.getCheck()}, 10000);
+    interval.interval = setInterval(function(){interval.getCheck()}, 5000);
     interval.req = $.get(newUrl, function(xhr){GetFromPage(xhr, buttonId, iframeId, interval)});
 }
 
@@ -559,7 +508,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
     interval.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId) 
         ($("#dlExt"+this.id).length > 0) ? $('#dlExt'+this.id).attr("src", $('#dlExt'+this.id).attr("src")) : clearInterval(this.interval);
         this.exec += 1;
-        if (this.exec > 1) console.log("(iframe redirect): Something is going on with: "+this.title+" at the URL:"+this.url)
+        if (this.exec > 1) Error("(iframeCheck): Something is going on with: "+this.title+" at the URL:"+this.url)
     }
     interval.interval = setInterval(function(){interval.iframeCheck()}, 5000);
 }
@@ -615,4 +564,59 @@ function ProcessJDownload(){
 
 function SortJDownload(a, b){
     return Number(a.split("Episode%20")[0].substr(0,3)) - Number(b.split("Episode%20")[0].substr(0,3));
+}
+
+//Misc functions
+function Lightbox(id, $container, params){
+    var params = params || {};
+    this.enable = function(){
+        $("#"+id+"_box").show();
+        $("#"+id+"_content").show();
+    };
+    this.disable = function(){
+        $("#"+id+"_box").hide();
+        $("#"+id+"_content").hide();
+    };
+
+    var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>"+id+"</h1>");
+    $content.append($container);
+    LockScroll($container);
+    var _this = this;
+    var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':'auto','margin-top':'8px'}});
+    $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
+    closeBtn.click(function(){
+        _this.disable();
+    });
+    
+    var $box = $("<div>", {
+        style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8",
+        id:id+'_box'
+    }).click(this.disable);
+    
+    $content.css("margin", "0.5em 1em").addClass("unselectable");
+    var $wrap = $("<div>", {
+        id:id+"_content",
+        style:"color:black;display:none;background-color:white;position:fixed;width:400px;height:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;"
+    }).append($content)
+    
+    if (params.wrapCss) $wrap.css(params.wrapCss);
+    if (params.contCss) $content.css(params.contCss);
+    if (params.selectable) $content.removeClass("unselectable");
+    $("body").append($box).append($wrap);
+}
+
+function Error(text){
+    var $container = $("<div>", {class:"settingsWindow"}).append("<p>You have encountered an error. Please send details of this error to the developer at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader/feedback'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader/issues'>GitHub</a>.</p>");
+    $container.append($("<p>", {html:text}));
+    var light = new Lightbox("Error", $container, {'selectable':true});
+    light.enable();
+}
+
+function LockScroll($element){
+    $element.bind("mousewheel DOMMouseScroll", function(e){
+        var up = (e.originalEvent.wheelDelta > 0 || e.originalEvent.detail < 0);
+        if ((Math.abs(this.scrollTop - (this.scrollHeight - $(this).height())) < 3 && !up) || (this.scrollTop === 0 && up)){
+            e.preventDefault();
+        }
+    });
 }
