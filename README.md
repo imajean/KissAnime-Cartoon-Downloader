@@ -19,7 +19,7 @@ Installation & Usage
 
 Functionality
 --------
-This script  grants the user the ability to download files from the sites from the [supported sites](#Supported%20Sites). From there, the user can download episodes from either the series list, or the episode viewing page, as shown in the following screenshots:
+This script  grants the user the ability to download files from the sites from the [supported sites](#supported-sites). From there, the user can download episodes from either the series list, or the episode viewing page, as shown in the following screenshots:
 #### Episode View Page
 There are a few added elements on this page, as indicated by the top bar. Most of the elements are self explanatory, however:
 + The "Remove Dub/Sub" checkbox removes the "(Sub)" or "(Dub)" from the name of the file when saving.
