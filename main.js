@@ -228,7 +228,6 @@ function MakeQuality(){ //Makes the quality switch
         $option = $("#selectQuality option:contains("+global_settings.quality.toString()+")");
         if ($option) $option.prop("selected", true);
         $("#selectQuality option:selected").change(function(){
-            console.log("CHANGED");
             global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
             UpdateGlobalSettings();
         });
