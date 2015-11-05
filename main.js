@@ -41,11 +41,11 @@ String.prototype.singleSpace = function(){
     for (var i = 0; i<array.length; i++){
         if (array[i] === ""){
             array.splice(i, 1);
-            i--
+            i--;
         }
     }
     return array.join(" ");
-}
+};
 
 Storage.prototype.setObject = function(key, value){ //Set JSON localstorage
     this.setItem(key, JSON.stringify(value));
@@ -155,7 +155,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
 } else if (window.location.href.indexOf("google") > -1){ //called by GetVid as a result of an iframe
     var link = window.location.href;
     if (link.split('#').length > 1){
-        var settings = JSON.parse(link.split("#")[1].replace(/\%22/g,'"')); //settings is an object including title, remain, link, host, downloadTo
+        var settings = JSON.parse(link.split("#")[1].replace(/\%22/g,'"').replace(/%0D/g, "")); //settings is an object including title, remain, link, host, downloadTo
         $('body').remove(); //Stop video
         SaveToDisk(link, settings); //Save
     }
