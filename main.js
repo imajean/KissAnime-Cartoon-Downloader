@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.28
+// @version      0.29
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -76,7 +76,7 @@ var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
 var isDown = false; //A flag that represents if the mouse is down or not
 var bar;
-var global_settings = localStorage.getObject('global_settings');
+var global_settings = localStorage.getObject('global_settings') || {};
 var default_setings = {
     'quality':720, //Quality selected
     'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
@@ -92,6 +92,7 @@ for (var key in default_setings){
         }
     }
 }
+UpdateGlobalSettings();
 
 var jDownloadUrls = [];
 function UpdateGlobalSettings(){
@@ -148,6 +149,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
     currentWindow = "series";
     $.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
         MakeBar("series");
+        $(".episodeList").eq(0).find("div").eq(3).remove()
 
         $("#multSelect").change(function(){ //A handler for the changing of the first episode to download
             var amount = parseInt($("#multSelect option").length) - parseInt($("#multSelect").val(), 10);
