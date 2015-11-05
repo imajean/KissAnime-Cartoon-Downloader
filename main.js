@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.29
+// @version      0.30
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -45,11 +45,12 @@ Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
 };
 
 //Global
+var keys = []; //Active keys
+var isDown = false; //A flag that represents if the mouse is down or not
 var currentWindow = null; //The current window that is active
 var remain = 0;  //How many downloads remain...
 var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
-var isDown = false; //A flag that represents if the mouse is down or not
 var bar;
 var global_settings = localStorage.getObject('global_settings') || {};
 var default_setings = {
@@ -57,8 +58,8 @@ var default_setings = {
     'remSubDub':false, //Whether or not to remove (Sub) and (Dub) tags
     'downloadTo':'browser', //Whether or not to use jDownload
     'count':true,
-    'drag':false,
-    'maxQuality':false
+    'select':'shift',
+    'maxQuality':false,
 };
 
 for (var key in default_setings){
@@ -296,6 +297,7 @@ function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
 function MakeSettings(){
     var $container = $("<div>", {class:"settingsWindow"}).append("<p>Below are some settings that can be used to configure the script. The settings for the script update as soon as a value is changed automatically, and this change carries across browser windows without the need to restart. Further help can be found at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader'>GitHub</a>.</p>");
     var checkboxes = [];
+    var radios = [];
 
     $container.append("<h2>Filename parameters</h2>");
     $container = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags', {'appendTo':$container});
@@ -304,17 +306,20 @@ function MakeSettings(){
     $container.append("<h2>Downloading parameters</h2>");
     $container = MakeCheck('count', 'Use this checkbox to toggle the counting down functionality', 'Enable Countdown', {'appendTo':$container});
     checkboxes.push("count");
-    $container = MakeCheck('maxQuality', 'Use this checkbox to force the maximum quality to be downloaded', 'Force Max Quality', {'appendTo':$container});
+    $container = MakeCheck('maxQuality', 'Use this checkbox to force the maximum quality to be downloaded', 'Force Max Quality', {'appendTo':$container, 'help':'This option <b>overrides</b> the manual quality setting'});
     checkboxes.push("maxQuality");
 
     $container = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
         browser:{text:'Download with Browser'}, 
         idm:{text:'Download with IDM', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
         jDownload:{text:'Download with JDownloader', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}}, {appendTo:$container});
- 
+    radios.push('downloadTo');
+
     $container.append("<h2>Select settings</h2>");
-    $container = MakeCheck('drag', 'This checkbox toggles the ability to drag', 'Enable Drag Select', {'appendTo':$container, 'help':'This feature is experimental and allows the user to select from the series selection page using a drag. See the docs for more information.'});
-    checkboxes.push("drag");
+    $container = MakeRadio('select', 'Choose your selection method:', {
+        drag:{text:'Drag Select', help:'This does not work when the mouse is moving quickly'}, 
+        shift:{text:'Shift Select', help:'Allows the use of shift key to select the range of videos from the selection screen'}}, {appendTo:$container});
+    radios.push('select');
     
     var light = new Lightbox('Settings', $container);
     var settingsBtn = MakeButton({text:"Settings"});
@@ -322,7 +327,7 @@ function MakeSettings(){
         $(".helpToggle").hide();
         global_settings = localStorage.getObject('global_settings');
         for (i = 0; i<checkboxes.length; i++) $("#"+checkboxes[i]).prop("checked", global_settings[checkboxes[i]]);
-        $("#downloadTo").find("input[value='"+global_settings.downloadTo+"']").attr("checked", "checked");
+        for (i = 0; i<radios.length; i++) $("#"+radios[i]).find("input[value='"+global_settings[radios[i]]+"']").attr("checked", "checked");
         light.enable();
     });
 }
@@ -395,31 +400,54 @@ $(document).mousedown(function(e){
     if (e.which === 1) isDown = true;
 }).mouseup(function(e){
     if (e.which === 1) isDown = false;
+}).keydown(function(e){
+    keys[e.keyCode] = true;
+}).keyup(function(e){
+    keys[e.keyCode] = false;
 });
 
 function MakeCheckboxes(){
     var style = " .hovered{ background:#660000!important;color:yellow}";
     $("<style type='text/css'>"+style+"</style>").appendTo("head");
 
-    var length = $("table.listing tr:gt(1)").length;
     function MouseHandle(e, $this){
-        if ((isDown && global_settings.drag) || e.data.force){
-            var index = $this.find("input").attr("index");
-            var newState = !$this.find("input").prop("checked");
-            $this.find("input").prop("checked", newState);
-            if (newState){ //if activated
-                if (indexes.indexOf(index) === -1){
-                    indexes.push(index);
-                    $this.find("td").addClass("hovered");
+        if ((isDown && global_settings.select === 'drag') || e.data.force){
+            if (keys[16] === true && global_settings.select === 'shift'){
+                var last = window.last_index;
+                var index = UpdateState($this);
+                if (last === undefined) return;
+                var range = [last, index].sort(sortNumber);
+                
+                for (var i = Number(range[0])+1; i<Number(range[1]); i++){
+                    UpdateState($("input[index="+i+"]").parent().parent());
                 }
-                if (!ButtonState("dlButton_sel")) ButtonState("dlButton_sel", true);
             } else {
-                indexes.splice(indexes.indexOf(index), 1);
-                $this.find("td").removeClass("hovered");
-                if (indexes.length === 0) ButtonState("dlButton_sel", false);
+                UpdateState($this);
             }
+        window.last_index = $this.find("input").attr("index");
         }
     }
+
+    function UpdateState($this){
+        var index = $this.find("input").attr("index");
+        var newState = !$this.find("input").prop("checked");
+        $this.find("input").prop("checked", newState);
+        if (newState){ //if activated
+            if (indexes.indexOf(index) === -1){
+                indexes.push(index);
+                $this.find("td").addClass("hovered");
+            }
+            if (!ButtonState("dlButton_sel")) ButtonState("dlButton_sel", true);
+        } else {
+            indexes.splice(indexes.indexOf(index), 1);
+            $this.find("td").removeClass("hovered");
+            if (indexes.length === 0) ButtonState("dlButton_sel", false);
+        }
+        return index;
+    }
+    
+
+    var length = $("table.listing tr:gt(1)").length;
     $("table.listing tr:gt(1)").each(function(){
         $(this).addClass("unselectable");
         $(this).mouseover({force:false}, function(e){MouseHandle(e, $(this))});
@@ -580,12 +608,9 @@ function Lightbox(id, $container, params){
     var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>"+id+"</h1>");
     $content.append($container);
     LockScroll($container);
-    var _this = this;
-    var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':'auto','margin-top':'8px'}});
+    var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':'auto','margin-top':'8px','display':'block'}});
     $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
-    closeBtn.click(function(){
-        _this.disable();
-    });
+    closeBtn.click(this.disable);
     
     var $box = $("<div>", {
         style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8",
