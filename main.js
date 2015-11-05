@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.32
+// @version      0.33
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -35,6 +35,17 @@ String.prototype.contains = function(search){
     }
     return false;
 };
+
+String.prototype.singleSpace = function(){
+    var array = this.split(" ");
+    for (var i = 0; i<array.length; i++){
+        if (array[i] === ""){
+            array.splice(i, 1);
+            i--
+        }
+    }
+    return array.join(" ");
+}
 
 Storage.prototype.setObject = function(key, value){ //Set JSON localstorage
     this.setItem(key, JSON.stringify(value));
@@ -183,7 +194,6 @@ function MakeBar(page){
         MakeButton({first:true, buttonId:"dlButton", text:"Download", handler:"main"});
         MakeQuality();
         MakeSettings();
-
     } else if (page === 'series'){
         $(".listing").before($("<div>", {id:'bar'}));
         bar = $("#bar");
@@ -525,7 +535,7 @@ function GetFromPage(xhr, buttonId, iframeId, interval){
 }
 
 function GetExtVid(url, titleText, buttonId, iframeId){ //Get the link for a new video
-    var title = (titleText.split("- Watch")[0].replace(/\n/g, " ")).trim();
+    var title = (titleText.split("- Watch")[0].replace(/\n/g, " ")).trim().singleSpace();
     GetVid(url, title, buttonId, iframeId);
 }
 
@@ -576,7 +586,6 @@ $(document).ready(function(){
         if (e.origin){
             if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
                 $("#dlExt"+e.data.iframeId).remove();
-                console.log(e.data.url);
                 if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
 
                 remain--;
