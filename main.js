@@ -76,7 +76,7 @@ var default_setings = {
 
 for (var key in default_setings){
     if (default_setings.hasOwnProperty(key)){
-        if (global_settings[key] === undefined){
+        if (global_settings[key] === undefined || global_settings[key] === null){
             global_settings[key] = default_setings[key];
         }
     }
@@ -210,6 +210,7 @@ function MakeBar(page){
 function MakeQuality(){ //Makes the quality switch
     if ($('#selectQuality').length > 0){
         $("#selectQuality").parent().css("display", "inline-block");
+        QualityChange();
     } else {
         if (typeof setCookie == 'function') setCookie("usingFlashV1", false); //Fixes JWPlayer bug
         bar.prepend($("<select>", {
@@ -220,6 +221,16 @@ function MakeQuality(){ //Makes the quality switch
             $div.find('option').each(function(){
                 $("#selectQuality").append($("<option>", {html:$(this).text()}));
             });
+            QualityChange();
+        });
+    }
+    function QualityChange(){
+        $option = $("#selectQuality option:contains("+global_settings.quality.toString()+")");
+        if ($option) $option.prop("selected", true);
+        $("#selectQuality option:selected").change(function(){
+            console.log("CHANGED");
+            global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
+            UpdateGlobalSettings();
         });
     }
 }
@@ -645,7 +656,7 @@ function Lightbox(id, $container, params){
     var $wrap = $("<div>", {
         id:id+"_content",
         style:"color:black;display:none;background-color:white;position:fixed;width:400px;height:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;z-index:100"
-    }).append($content)
+    }).append($content);
     
     if (params.wrapCss) $wrap.css(params.wrapCss);
     if (params.contCss) $content.css(params.contCss);
