@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.31
+// @version      0.32
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
 // @match        http://kissanime.com/Anime/*
+// @match        http://kissanime.to/Anime/*
 // @match        http://kissasian.com/Drama/*
 // @match        http://kisscartoon.me/Cartoon/*
 // @match        https://*.googlevideo.com/*
@@ -88,9 +89,11 @@ var css = [
     ".settingsWindow a{ color:red}",
     ".settingsWindow h2{ margin-bottom:0.2em}"
 ];
+MakeCss(css);
 
-$("<style type='text/css'>"+css.join("\n")+"</style>").appendTo("head");
-
+function MakeCss(cssArray){
+    $("<style type='text/css'>"+cssArray.join("\n")+"</style>").appendTo("head");
+}
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
 if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").length > 0){
@@ -412,8 +415,7 @@ $(document).mousedown(function(e){
 });
 
 function MakeCheckboxes(){
-    var style = " .hovered{ background:#660000!important;color:yellow}";
-    $("<style type='text/css'>"+style+"</style>").appendTo("head");
+    MakeCss([" .hovered{ background:#660000!important;color:yellow}"]);
 
     function MouseHandle(e, $this){
         if ((isDown && global_settings.select === 'drag') || e.data.force){
