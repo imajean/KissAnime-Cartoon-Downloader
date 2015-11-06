@@ -60,7 +60,7 @@ var errors = 0;
 var keys = []; //Active keys
 var isDown = false; //A flag that represents if the mouse is down or not
 var currentWindow = null; //The current window that is active
-var remain = 0;  //How many downloads remain...
+var remain = {};  //How many downloads remain...
 var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
 var bar;
@@ -277,8 +277,8 @@ function MakeButton(params){ //Makes the download button, params include buttonI
                     startIndex = parseInt($("#multSelect").val(), 10) - 1;   
                 }
                 for (i = startIndex; i<startIndex+count; i++) indexes.push(i);
-                remain = indexes.length;
-                if (global_settings.count) $("#"+params.buttonId).attr("value", remain+" remaining");
+                remain[params.buttonId] = indexes.length;
+                if (global_settings.count) $("#"+params.buttonId).attr("value", remain[params.buttonId]+" remaining");
 
                 //If the information for the first download is on the page....
                 if (params.first){
@@ -286,8 +286,8 @@ function MakeButton(params){ //Makes the download button, params include buttonI
                     DownloadCurrent(global_settings.quality, params.buttonId); //This also decrements remain when found...
                 }
             } else if (params.handler === 'select'){ //If it is the select button
-                remain = indexes.length;
-                if (global_settings.count) $("#"+params.buttonId).attr("value", remain+" remaining");
+                remain[params.buttonId] = indexes.length;
+                if (global_settings.count) $("#"+params.buttonId).attr("value", remain[params.buttonId]+" remaining");
             }
 
             //Confirmation box
@@ -449,7 +449,7 @@ function MakeRange(id, options){ //options include appendTo, info, range, step, 
     });
     $range = CheckHelp(options);
     var $val = $("<div>",{
-    	html:$range.attr("value").toFixed(2);
+    	html:$range.attr("value").toFixed(2)
     });
 
 }
@@ -547,10 +547,10 @@ function sortNumber(a,b) {
 
 function CreateAnother(index, buttonId, iframeId){
     var newUrl = eps[index];
-    var interval = new Object({'lastRemain':remain, 'exec':0, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId});
+    var interval = new Object({'lastRemain':remain.buttonId, 'exec':0, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId});
     interval.getCheck = function(){ //ClearInterval is done externally
-        if (remain !== this.lastRemain){
-            this.lastRemain = remain;
+        if (remain.buttonId !== this.lastRemain){
+            this.lastRemain = remain.buttonId;
             return;
         }
         this.req.abort();
@@ -634,9 +634,9 @@ $(document).ready(function(){
                 $("#dlExt"+e.data.iframeId).remove();
                 if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
 
-                remain--;
-                if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain+" remaining");
-                if (remain === 0){
+                remain[e.data.buttonId]--;
+                if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain[e.data.buttonId]+" remaining");
+                if (remain[e.data.buttonId] === 0){
                     $("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
                     if (global_settings.downloadTo === 'jDownload') ProcessJDownload();
                     window.onbeforeunload = null; //Remove leave confirmation
