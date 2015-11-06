@@ -73,7 +73,8 @@ var default_setings = {
     'select':'shift',
     'maxQuality':false,
     'fade':false,
-    'timeout':5000
+    'errTimeout':5,
+    'waitTime':0
 };
 
 for (var key in default_setings){
@@ -352,6 +353,10 @@ function MakeSettings(){
 
     $container.append("<h2>Miscellaneous</h2>");
     $container = MakeCheck('fade', 'Toggle the fading animations of the lightboxes', 'Enable Fading Animation', {'appendTo':$container});
+
+    $container.append("<h2>Advanced Settings</h2>");
+    //$container = MakeRange('errTimeout', {appendTo:$container, info:'Error Timeout', range:[2, 8], step:0.1, round:1, help:'Use this slider to change the timeout for error checking. If you had an (iframeCheck) error you should increase this value'});
+    //$container = MakeRange('waitTime', {appendTo:$container, info:'Download delay', range:[0, 5], step:0.1, round:1, help:'Use this slider to change the delay period between download requests. Increasing this value increases the chance of downloading videos in order for Browser and IDM integrations.'});
     
     var light = new Lightbox('Settings', $container);
     var settingsBtn = MakeButton({text:"Settings", id:"settingsBtn"});
@@ -428,6 +433,20 @@ function MakeRadio(setting, label, choices, options){ //Makes the boolean checkb
     $div = $("<div>", {html:label, style:'padding:0.4em 0'}).append($radio);
     if (options.appendTo) return options.appendTo.append($div);
     return $div;
+}
+
+function MakeRange(id, options){ //options include appendTo, info, range, step, round, help
+    var options = options || {};
+    var $range = $("<input>", {
+        id:id,
+        type: 'range',
+        min:options.range[0],
+        max:options.range[1],
+        step:options.step,
+        value:global_settings[id]
+    });
+    $range = CheckHelp(options);
+
 }
 
 $(document).mousedown(function(e){
@@ -512,9 +531,9 @@ function DownloadCurrent(quality, buttonId){
 
 function DownloadVideos(indexes, buttonId){ //Where indexes refer to the indexes of the videos
     indexes.sort(sortNumber);
-    for (var i = 0; i<indexes.length; i++){ //Download the videos
+    timeout([0, indexes.length], global_settings.waitTime, function(i){ //execute a for loop for range, execute every certain amount of seconds
         CreateAnother(indexes[i], buttonId, buttonId+"_"+indexes[i]);
-    }
+    });
 }
 
 function sortNumber(a,b) {
@@ -538,7 +557,7 @@ function CreateAnother(index, buttonId, iframeId){
         }
     }
 
-    interval.interval = setInterval(function(){interval.getCheck()}, global_settings.timeout);
+    interval.interval = setInterval(function(){interval.getCheck()}, global_settings.errTimeout*1000);
     interval.req = $.get(newUrl, function(xhr){GetFromPage(xhr, buttonId, iframeId, interval)});
 }
 
@@ -578,9 +597,9 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
     interval.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
         ($("#dlExt"+this.id).length > 0) ? $('#dlExt'+this.id).attr("src", $('#dlExt'+this.id).attr("src")) : clearInterval(this.interval);
         this.exec += 1;
-        if (this.exec > 1) errors += 1, clearInterval(this.interval), Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the timeout amount in the settings to fix this");
+        if (this.exec > 1) errors += 1, clearInterval(this.interval), Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this");
     };
-    interval.interval = setInterval(function(){interval.iframeCheck()}, global_settings.timeout);
+    interval.interval = setInterval(function(){interval.iframeCheck()}, global_settings.errTimeout*1000);
 }
 
 function ButtonState(id, enable){
@@ -686,4 +705,19 @@ function LockScroll($element){
             e.preventDefault();
         }
     });
+}
+
+function timeout(range, time, callback){
+    var i = range[0];
+    callback(i);
+    Loop();
+    function Loop(){
+        setTimeout(function(){
+            i++;
+            if (i<range[1]){
+                callback(i);
+                Loop();
+            }
+        }, time*1000)
+    } 
 }
