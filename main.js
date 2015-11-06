@@ -329,7 +329,7 @@ function MakeMultiple(id, params){ //Makes the multiple dropdown boxes
     }
     
     if (params.appendTo) return params.appendTo.append(multiple);
-    if (params.prependTo) return params.prependTo.prepend(multiple)
+    if (params.prependTo) return params.prependTo.prepend(multiple);
     return multiple;
 }
 
@@ -450,7 +450,7 @@ function MakeRange(id, options){ //options include appendTo, label, range, step,
     });
     $range.val(global_settings[id]);
     var $val = $("<output>",{
-    	text:Number(global_settings[id]).toFixed(options.round),
+        text:Number(global_settings[id]).toFixed(options.round),
         for:id,
         style:"margin-left:0.2em"
     });
@@ -671,7 +671,7 @@ function ProcessJDownload(){
 }
 
 function SortJDownload(a, b){
-    return Number(a.split("Episode%20")[0].substr(0,3)) - Number(b.split("Episode%20")[0].substr(0,3));
+    return Number(a.split("Episode%20")[1].substr(0,3)) - Number(b.split("Episode%20")[1].substr(0,3));
 }
 
 //Misc functions
@@ -738,6 +738,6 @@ function timeout(range, time, callback){
                 callback(i);
                 Loop();
             }
-        }, time*1000)
+        }, time*1000);
     } 
 }
