@@ -447,23 +447,26 @@ function MakeCheckboxes(){
         if ((isDown && global_settings.select === 'drag') || e.data.force){
             if (keys[16] === true && global_settings.select === 'shift'){
                 var last = window.last_index;
-                var index = UpdateState($this);
+                var index = SelectState($this);
                 if (last === undefined) return;
                 var range = [last, index].sort(sortNumber);
                 
                 for (var i = Number(range[0])+1; i<Number(range[1]); i++){
-                    UpdateState($("input[index="+i+"]").parent().parent());
+                    SelectState($("input[index="+i+"]").parent().parent());
                 }
+                var $last = $("input[index="+last+"]").parent().parent();
+                if (SelectState($last, true) !== SelectState($this, true)) SelectState($last)
             } else {
-                UpdateState($this);
+                SelectState($this);
             }
         window.last_index = $this.find("input").attr("index");
         }
     }
 
-    function UpdateState($this){
+    function SelectState($this, get){
         var index = $this.find("input").attr("index");
         var newState = !$this.find("input").prop("checked");
+        if (get) return !newState;
         $this.find("input").prop("checked", newState);
         if (newState){ //if activated
             if (indexes.indexOf(index) === -1){
