@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.34
+// @version      0.35
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -102,7 +102,8 @@ var css = [
     ".midalign{ vertical-align:middle;}",
     ".settingsWindow{ width:100%;height:200px;overflow-y:scroll;border:1px solid gray;border-width:1px 0;}",
     ".settingsWindow a{ color:red}",
-    ".settingsWindow h2{ margin-bottom:0.2em}"
+    ".settingsWindow h2{ margin-bottom:0.2em}",
+    ".inputdiv { padding:0.4em 0}"
 ];
 MakeCss(css);
 
@@ -357,8 +358,8 @@ function MakeSettings(){
 
     $container.append("<h2>Advanced Settings</h2>");
     $container = MakeCheck('debug', 'Use this checkbox to toggle error checking', 'Enable Error Checking', {'appendTo':$container, 'help':'Disabling this option is <b>NOT</b> recommended <b>AT ALL</b>'});
-    //$container = MakeRange('errTimeout', {appendTo:$container, info:'Error Timeout', range:[2, 8], step:0.1, round:1, help:'Use this slider to change the timeout for error checking. If you had an (iframeCheck) error you should increase this value'});
-    //$container = MakeRange('waitTime', {appendTo:$container, info:'Download delay', range:[0, 5], step:0.1, round:1, help:'Use this slider to change the delay period between download requests. Increasing this value increases the chance of downloading videos in order for Browser and IDM integrations.'});
+    $container = MakeRange('errTimeout', {appendTo:$container, label:'Error Timeout:', range:[2, 8], step:0.1, round:1, help:'Use this slider to change the timeout for error checking. If you had an (iframeCheck) error you should increase this value'});
+    $container = MakeRange('waitTime', {appendTo:$container, label:'Download Delay:', range:[0, 5], step:0.1, round:1, help:'Use this slider to change the delay period between download requests. Increasing this value increases the chance of downloading videos in order for Browser and IDM integrations, at the compromise of slowing the overall download process'});
 
     var light = new Lightbox('Settings', $container);
     var settingsBtn = MakeButton({text:"Settings", id:"settingsBtn"});
@@ -400,7 +401,7 @@ function MakeCheck(setting, info, label, options){ //Makes the boolean checkboxe
         UpdateGlobalSettings();
     });
 
-    $div = $("<div>", {style:'padding:0.4em 0'}).append($check);
+    $div = $("<div>", {class:'inputdiv'}).append($check);
     $div = CheckHelp($div, options);
     $div.append("<br />");
 
@@ -432,25 +433,39 @@ function MakeRadio(setting, label, choices, options){ //Makes the boolean checkb
         UpdateGlobalSettings();
     });
 
-    $div = $("<div>", {html:label, style:'padding:0.4em 0'}).append($radio);
+    $div = $("<div>", {html:label, class:"inputdiv"}).append($radio);
     if (options.appendTo) return options.appendTo.append($div);
     return $div;
 }
 
-function MakeRange(id, options){ //options include appendTo, info, range, step, round, help
+function MakeRange(id, options){ //options include appendTo, label, range, step, round, help
     var options = options || {};
     var $range = $("<input>", {
         id:id,
-        type: 'range',
+        type:'range',
         min:options.range[0],
         max:options.range[1],
         step:options.step,
-        value:global_settings[id]
+        class:'midalign'
     });
-    $range = CheckHelp(options);
-    var $val = $("<div>",{
-    	html:$range.attr("value").toFixed(2)
+    $range.val(global_settings[id]);
+    var $val = $("<output>",{
+    	text:Number(global_settings[id]).toFixed(options.round),
+        for:id,
+        style:"margin-left:0.2em"
     });
+    $range.mousemove(function(){
+        $("output[for="+id+"]").text(Number($(this).val()).toFixed(options.round));
+    }).mouseup(function(){
+        global_settings[id] = $(this).val();
+        UpdateGlobalSettings();
+    });
+
+    $div = $("<div>", {html:options.label, class:"inputdiv"}).append("<br />").append($range).append($val);
+    $div = CheckHelp($div, options)
+
+    if (options.appendTo) return options.appendTo.append($div);
+    return $div;
 
 }
 
@@ -706,7 +721,7 @@ function Error(text){
 function LockScroll($element){
     $element.bind("mousewheel DOMMouseScroll", function(e){
         var up = (e.originalEvent.wheelDelta > 0 || e.originalEvent.detail < 0);
-        if ((Math.abs(this.scrollTop - (this.scrollHeight - $(this).height())) < 3 && !up) || (this.scrollTop === 0 && up)){
+        if ((Math.abs(this.scrollTop - (this.scrollHeight - $(this).height())) < 2 && !up) || (this.scrollTop === 0 && up)){
             e.preventDefault();
         }
     });
