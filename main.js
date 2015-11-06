@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.33
+// @version      0.34
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.com/Content/images/favicon.ico
@@ -305,7 +305,7 @@ function MakeMultiple(id, params){ //Makes the multiple dropdown boxes
         id:id,
         class:"coolfont"
     });
-    if (params.info) multiple.attr("title", params.info)
+    if (params.info) multiple.attr("title", params.info);
 
     if (params.numeric){
         for (var i = params.range[0]; i<params.range[1]; i++){
@@ -536,7 +536,7 @@ function CreateAnother(index, buttonId, iframeId){
         } else {
             this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)});
         }
-    };
+    }
 
     interval.interval = setInterval(function(){interval.getCheck()}, global_settings.timeout);
     interval.req = $.get(newUrl, function(xhr){GetFromPage(xhr, buttonId, iframeId, interval)});
@@ -619,7 +619,6 @@ $(document).ready(function(){
                     setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
                 } 
             }
-            
         }
     }, false); 
 });
