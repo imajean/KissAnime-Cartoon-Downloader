@@ -448,6 +448,9 @@ function MakeRange(id, options){ //options include appendTo, info, range, step, 
         value:global_settings[id]
     });
     $range = CheckHelp(options);
+    var $val = $("<div>",{
+    	html:$range.attr("value").toFixed(2);
+    });
 
 }
 
@@ -553,7 +556,7 @@ function CreateAnother(index, buttonId, iframeId){
         this.req.abort();
         this.exec += 1;
         if (this.exec > 1 && global_settings.debug){
-            errors += 1, clearInterval(this.interval), Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test <a href='"+this.newUrl+"'>here</a> and try again. Try <iframe src='"+this.newUrl+"' seamless style='border:0'></iframe>");
+            errors += 1, clearInterval(this.interval), Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test <a href='"+this.newUrl+"'>here</a> and try again.");
         } else {
             this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)});
         }
