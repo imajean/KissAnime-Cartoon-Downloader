@@ -190,17 +190,19 @@ function SaveToDisk(link, settings){
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
 function MakeBar(page){
+    $("#selectEpisode option:selected").nextAll().andSelf().each(function(){ eps.push($(this).val());});
+    $(".listing a").each(function(){ eps.unshift($(this).attr("href"));});
     if (page === 'episode'){
         bar = $('#selectPlayer').parent().parent(); //The bar that contains quality + download buttons
-        MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
+        MakeMultiple("multAmount", {appendTo:bar, info:"Select the amount of episodes after and including the starting episode", numeric:true, range:[1,eps.length+1]});
         MakeButton({first:true, id:"dlButton", text:"Download", handler:"main"});
         MakeQuality();
         MakeSettings();
     } else if (page === 'series'){
         $(".listing").before($("<div>", {id:'bar'}));
         bar = $("#bar");
-        MakeMultiple("multSelect", "Select the episode you would like to start downloading from");
-        MakeMultiple("multAmount", "Select the amount of episodes after and including the starting episode");
+        MakeMultiple("multSelect", {appendTo:bar, info:"Select the episode you would like to start downloading from", numeric:true, range:[1,eps.length+1]});
+        MakeMultiple("multAmount", {appendTo:bar, info:"Select the amount of episodes after and including the starting episode", numeric:true, range:[1,eps.length+1]});
         MakeQuality();
         MakeButton({id:"dlButton", text:"Download", handler:"main"});
         MakeButton({id:"dlButton_sel", text:"Download Selected", handler:"select", disabled:true});
@@ -215,14 +217,16 @@ function MakeQuality(){ //Makes the quality switch
         QualityChange();
     } else {
         if (typeof setCookie == 'function') setCookie("usingFlashV1", false); //Fixes JWPlayer bug
-        bar.prepend($("<select>", {
-            id: "selectQuality"
-        }));
         $.get(eps[0], function(xhr){
+            var options = [];
             var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
-            $div.find('option').each(function(){
-                $("#selectQuality").append($("<option>", {html:$(this).text()}));
+            $div.find("option").each(function(){
+                options.push({
+                    'text':$(this).text(),
+                    'value':$(this).text().replace("p","")
+                });
             });
+            MakeMultiple("selectQuality", {prependTo:bar, options:options});
             QualityChange();
         });
     }
@@ -290,36 +294,40 @@ function MakeButton(params){ //Makes the download button, params include buttonI
                     return "Leaving this page will cancel some of your downloads!";
                 };
                 DownloadVideos(indexes, params.buttonId); //Download the videos with the given indexes
-            }
-            
+            }   
         }
     }
 }
 
-function MakeMultiple(id, info){ //Makes the multiple dropdown boxes
+function MakeMultiple(id, params){ //Makes the multiple dropdown boxes
+    var params = params || {};
     multiple = $("<select>", {
         id:id,
-        class:"coolfont",
-        title:info
+        class:"coolfont"
     });
+    if (params.info) multiple.attr("title", params.info)
 
-    var i = 1;
-    $("#selectEpisode option:selected").nextAll().andSelf().each(function(){
-        eps.push($(this).val());
-        i += 1;
-    });
-    $(".listing a").each(function(){
-        eps.unshift($(this).attr("href"));
-        i += 1;
-    });
-    for (var j = 1; j<i; j++){
-        option = $("<option>", {
-            value: j,
-            text: j
-        });
-        multiple.append(option);
+    if (params.numeric){
+        for (var i = params.range[0]; i<params.range[1]; i++){
+            option = $("<option>", {
+                value: i,
+                text: i
+            });
+            multiple.append(option);
+        }
+    } else {
+        for (var i = 0; i<params.options.length; i++){
+            option = $("<option>", {
+                value: params.options[i].value,
+                text: params.options[i].text
+            });
+            multiple.append(option);
+        }
     }
-    bar.append(multiple);
+    
+    if (params.appendTo) return params.appendTo.append(multiple);
+    if (params.prependTo) return params.prependTo.prepend(multiple)
+    return multiple;
 }
 
 function MakeSettings(){
@@ -393,6 +401,7 @@ function MakeCheck(setting, info, label, options){ //Makes the boolean checkboxe
     return $div;
 }
 function MakeRadio(setting, label, choices, options){ //Makes the boolean checkboxes
+    var options = options || {}
     var $radio = $("<form>", {id:setting});
     for (var key in choices){
         if (choices.hasOwnProperty(key)){
