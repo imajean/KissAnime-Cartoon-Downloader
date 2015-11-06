@@ -4,7 +4,7 @@
 // @version      0.34
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
-// @icon         http://kissanime.com/Content/images/favicon.ico
+// @icon         http://kissanime.to/Content/images/favicon.ico
 // @match        http://kissanime.com/Anime/*
 // @match        http://kissanime.to/Anime/*
 // @match        http://kissasian.com/Drama/*
@@ -74,7 +74,8 @@ var default_setings = {
     'maxQuality':false,
     'fade':false,
     'errTimeout':5,
-    'waitTime':0
+    'waitTime':0,
+    'debug':true
 };
 
 for (var key in default_setings){
@@ -355,9 +356,10 @@ function MakeSettings(){
     $container = MakeCheck('fade', 'Toggle the fading animations of the lightboxes', 'Enable Fading Animation', {'appendTo':$container});
 
     $container.append("<h2>Advanced Settings</h2>");
+    $container = MakeCheck('debug', 'Use this checkbox to toggle error checking', 'Enable Error Checking', {'appendTo':$container, 'help':'Disabling this option is <b>NOT</b> recommended <b>AT ALL</b>'});
     //$container = MakeRange('errTimeout', {appendTo:$container, info:'Error Timeout', range:[2, 8], step:0.1, round:1, help:'Use this slider to change the timeout for error checking. If you had an (iframeCheck) error you should increase this value'});
     //$container = MakeRange('waitTime', {appendTo:$container, info:'Download delay', range:[0, 5], step:0.1, round:1, help:'Use this slider to change the delay period between download requests. Increasing this value increases the chance of downloading videos in order for Browser and IDM integrations.'});
-    
+
     var light = new Lightbox('Settings', $container);
     var settingsBtn = MakeButton({text:"Settings", id:"settingsBtn"});
     settingsBtn.click(function(){
@@ -550,8 +552,8 @@ function CreateAnother(index, buttonId, iframeId){
         }
         this.req.abort();
         this.exec += 1;
-        if (this.exec > 1){
-            errors += 1, clearInterval(this.interval), Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the captcha <a href='"+this.newUrl+"'>here</a> and try again.");
+        if (this.exec > 1 && global_settings.debug){
+            errors += 1, clearInterval(this.interval), Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test <a href='"+this.newUrl+"'>here</a> and try again. Try <iframe src='"+this.newUrl+"' seamless style='border:0'></iframe>");
         } else {
             this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)});
         }
@@ -597,7 +599,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
     interval.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
         ($("#dlExt"+this.id).length > 0) ? $('#dlExt'+this.id).attr("src", $('#dlExt'+this.id).attr("src")) : clearInterval(this.interval);
         this.exec += 1;
-        if (this.exec > 1) errors += 1, clearInterval(this.interval), Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this");
+        if (this.exec > 1 && global_settings.debug) errors += 1, clearInterval(this.interval), Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this");
     };
     interval.interval = setInterval(function(){interval.iframeCheck()}, global_settings.errTimeout*1000);
 }
