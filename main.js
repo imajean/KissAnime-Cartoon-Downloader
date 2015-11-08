@@ -598,7 +598,7 @@ function GetFromPage(xhr, buttonId, iframeId, interval, index){
     indexes.splice(index, 1);
     var url = asp.wrap(text);
     var titleText = xhr.split("<title>")[1].split("</title>")[0];
-    if (interval) interval.kill();
+    if (interval) interval.kill(true);
     GetExtVid(url, titleText, buttonId, iframeId);
 }
 
@@ -621,7 +621,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
     $("body").append($iframe);
     
     Interval.prototype.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
-        ($("#"+this.id).length > 0) ? $('#'+this.id).attr("src", $('#'+this.id).attr("src")) : this.kill();
+        ($("#"+this.id).length > 0) ? $('#'+this.id).attr("src", $('#'+this.id).attr("src")) : this.kill(true);
         this.exec += 1;
         if (this.exec > 1 && global_settings.debug){
         	Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", Resume);
@@ -646,11 +646,11 @@ function Interval(params){
 		}
 	}
 }
-Interval.prototype.kill = function(){
+Interval.prototype.kill = function(remove){
 	clearInterval(this.interval);
-    processes.splice(this, 1);
+    if (remove) processes.splice(this, 1);
 }
-Interval.prototype.reset = function(){
+Interval.prototype.resume = function(){
 	this.exec = 0;
 	this[this.make]();
 }
@@ -729,7 +729,7 @@ function Lightbox(id, $container, params){
     var _this = this;
     closeBtn.click({_this:_this, params:params}, function(e){
     	e.data._this.disable();
-    	if (e.data.params.closeHandler) e.data.params.closeHandler(e.data.params)
+        if (e.data.params.closeHandler) e.data.params.closeHandler()
    	});
     
     var $box = $("<div>", {
@@ -758,7 +758,7 @@ function Error(text, callback){
     var $container = $("<div>", {class:"settingsWindow"}).append("<p>You have encountered an error. Please send details of this error to the developer at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader/feedback'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader/issues'>GitHub</a>.</p>");
     $container.append($("<p>", {html:text}));
     if ($("#Error").length > 0) $container = $("<p>", {html:text});
-    var light = new Lightbox("Error", $container, {'selectable':true, 'count':errors, 'closeHandler':callback});
+    var light = new Lightbox("Error", $container, {'selectable':true, 'count':errors, 'closeHandler':ResumeProcesses});
     light.enable();
 }
 
@@ -772,10 +772,10 @@ function LockScroll($element){
 }
 
 function timeout(params){
-	params = params || {};
-	for (var key in params){
-		if (params.hasOwnProperty(key)){
-			this[key] = params[key];
+	this.params = params || {};
+	for (var key in this.params){
+		if (this.params.hasOwnProperty(key)){
+			this[key] = this.params[key];
 		}
 	}
     this.loop = function(){
@@ -788,17 +788,18 @@ function timeout(params){
             }
         }, this.time*1000)
     }
-    this.kill = function(){
+    this.kill = function(remove){
+        this.oldRange = range[0];
    		this.range[0] = this.range[1];
+        if (remove) processes.splice(this, 1);
    	}
     processes.push(this);
     this.loop();
 }
-timeout.prototype.reset = function(){
-    processes.push(new timeout({range:[0, indexes.length], time:global_settings.waitTime, callback:function(i){ //execute a for loop for range, execute every certain amount of seconds
-        CreateAnother(indexes[i], buttonId, buttonId+"_"+i);
-    }}));
+timeout.prototype.resume = function(){
     processes.splice(processes.indexOf(this), 1);
+    this.params.range[0] = this.oldRange;
+    processes.push(new timeout(this.params));
 }
 
 function MakeCss(cssArray){
@@ -832,4 +833,9 @@ function KillProcesses(){
 	for (var i = 0; i<processes.length; i++){
 		processes[i].kill();
 	}
+}
+function ResumeProcesses(){
+    for (var i = 0; i<processes.length; i++){
+        processes[i].resume();
+    }
 }
