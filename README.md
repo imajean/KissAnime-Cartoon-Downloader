@@ -24,8 +24,8 @@ This script  grants the user the ability to download files from the sites from t
 #### Episode View Page
 There are a few added elements on this page, as indicated by the top bar. Most of the elements are self explanatory, however the amount of episodes to download is **inclusive**. This means that to download "1" is to download only the current episode, and not the next episode.
 
-![Episode page](https://github.com/Domination9987/KissAnime-Cartoon-Downloader/blob/master/screenshots/episodePage.jpg?raw=true "Episode view page")
-![Download links](https://github.com/Domination9987/KissAnime-Cartoon-Downloader/blob/master/screenshots/downloadLinks.jpg?raw=true "Edited download links")
+![Episode page](https://raw.githubusercontent.com/Domination9987/KissAnime-Cartoon-Downloader/master/screenshots/episodePage.jpg "Episode view page")
+![Download links](https://raw.githubusercontent.com/Domination9987/KissAnime-Cartoon-Downloader/master/screenshots/downloadLinks.jpg "Edited download links")
 
 ### Series Page
 The interface on the series page is similar to that of the episode page in the added download bar. However, in this page, the two dropdown selectors refer to the starting episode and how many to download respectively. This means:
@@ -39,7 +39,7 @@ It is important to note that the "Download" button handles the two dropdown inpu
 
 The options of the script can be configured using the settings menu. From this menu, there are the following options:
 
-![Settings](https://github.com/Domination9987/KissAnime-Cartoon-Downloader/blob/master/screenshots/settings.jpg?raw=true "Settings window")
+![Settings](https://raw.githubusercontent.com/Domination9987/KissAnime-Cartoon-Downloader/master/screenshots/settings.jpg "Settings window")
 
   ##### Filename parameters
   + The "Remove Dub/Sub" checkbox removes the "(Sub)" or "(Dub)" from the name of the file when saving.
