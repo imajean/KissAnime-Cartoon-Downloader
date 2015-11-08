@@ -11,16 +11,19 @@
 // @match        http://kisscartoon.me/Cartoon/*
 // @match        https://*.googlevideo.com/*
 // @match        https://*.c.docs.google.com/*
+// @match        http://kissanime.to/Special/AreYouHuman*
+// @match        http://kissanime.com/Special/AreYouHuman*
 // @license      Creative Commons; http://creativecommons.org/licenses/by/4.0/
 // @require      http://code.jquery.com/jquery-1.11.0.min.js
 // @grant        none
 // ==/UserScript==
 
 /* INFO
-This script contains three parts
+This script contains four parts
  1. The download bar handler
  2. The series page handler
- 3. The downloading video handler << This is the google docs sites
+ 3. Handles iframe captcha
+ 4. The downloading video handler << This is the google docs sites
 */
 
 //Misc functions
@@ -63,6 +66,7 @@ var currentWindow = null; //The current window that is active
 var remain = {};  //How many downloads remain...
 var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
+var processes = []; //An array containing all the processes being run
 var bar;
 var global_settings = localStorage.getObject('global_settings') || {};
 var default_setings = {
@@ -77,21 +81,9 @@ var default_setings = {
     'waitTime':0,
     'debug':true
 };
-
-for (var key in default_setings){
-    if (default_setings.hasOwnProperty(key)){
-        if (global_settings[key] === undefined || global_settings[key] === null){
-            global_settings[key] = default_setings[key];
-        }
-    }
-}
-UpdateGlobalSettings();
+SetupGlobalSettings(); //Ensures that all global_settings are set... if not, refer to default_settings
 
 var jDownloadUrls = [];
-function UpdateGlobalSettings(){
-    localStorage.setObject('global_settings', global_settings);
-}
-
 var css = [
     ".disabled{ cursor:default!important; color:black!important;}",
     ".coolfont{ background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;}",
@@ -107,9 +99,9 @@ var css = [
 ];
 MakeCss(css);
 
-function MakeCss(cssArray){
-    $("<style type='text/css'>"+cssArray.join("\n")+"</style>").appendTo("head");
-}
+linkSplit = window.location.href.split('.');
+var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:500px", seamless:true, src:linkSplit[0]+"."+linkSplit[1].split("/")[0]+'/Special/AreYouHuman?reUrl=hi', class:'captcha'});
+
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
 if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").length > 0){
@@ -137,7 +129,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
         DownloadCurrent($(this).text().replace("p", ""));
     });
 
-    //------------------------------------------------------------------          PART II              -------------------------------------------------------------------------------------*/
+  //------------------------------------------------------------------          PART II              -------------------------------------------------------------------------------------*/
 } else if ($(".listing").length > 0){ 
     currentWindow = "series";
     $.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
@@ -156,7 +148,11 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
         });
     });
 
-    //------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
+//------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
+} else if (window.location.href.indexOf("Special") > -1){
+	$("body").html($("#formVerify"));
+
+//------------------------------------------------------------------          PART IV              -------------------------------------------------------------------------------------*/
 } else if (window.location.href.indexOf("google") > -1){ //called by GetVid as a result of an iframe
     var link = window.location.href;
     if (link.split('#').length > 1){
@@ -222,7 +218,10 @@ function MakeQuality(){ //Makes the quality switch
         if (typeof setCookie == 'function') setCookie("usingFlashV1", false); //Fixes JWPlayer bug
         $.get(eps[0], function(xhr){
             var options = [];
-            var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
+            var text = xhr.split("selector")[1];
+            (text) ? text = text.split("</div>")[0] : Error($captcha, MakeQuality);
+            if (!text) return;
+            var $div = $("<div>").html(text);
             $div.find("option").each(function(){
                 options.push({
                     'text':$(this).text(),
@@ -329,7 +328,7 @@ function MakeMultiple(id, params){ //Makes the multiple dropdown boxes
     }
     
     if (params.appendTo) return params.appendTo.append(multiple);
-    if (params.prependTo) return params.prependTo.prepend(multiple);
+    if (params.prependTo) return params.prependTo.prepend(multiple)
     return multiple;
 }
 
@@ -450,7 +449,7 @@ function MakeRange(id, options){ //options include appendTo, label, range, step,
     });
     $range.val(global_settings[id]);
     var $val = $("<output>",{
-        text:Number(global_settings[id]).toFixed(options.round),
+    	text:Number(global_settings[id]).toFixed(options.round),
         for:id,
         style:"margin-left:0.2em"
     });
@@ -551,9 +550,9 @@ function DownloadCurrent(quality, buttonId){
 
 function DownloadVideos(indexes, buttonId){ //Where indexes refer to the indexes of the videos
     indexes.sort(sortNumber);
-    timeout([0, indexes.length], global_settings.waitTime, function(i){ //execute a for loop for range, execute every certain amount of seconds
-        CreateAnother(indexes[i], buttonId, buttonId+"_"+indexes[i]);
-    });
+    processes.push(new timeout({range:[0, indexes.length], time:global_settings.waitTime, callback:function(i){ //execute a for loop for range, execute every certain amount of seconds
+        CreateAnother(indexes[i], buttonId, buttonId+"_"+i);
+    }}));
 }
 
 function sortNumber(a,b) {
@@ -561,37 +560,45 @@ function sortNumber(a,b) {
 }
 
 function CreateAnother(index, buttonId, iframeId){
-    var newUrl = eps[index];
-    var interval = new Object({'lastRemain':remain.buttonId, 'exec':0, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId});
-    interval.getCheck = function(){ //ClearInterval is done externally
-        if (remain.buttonId !== this.lastRemain){
-            this.lastRemain = remain.buttonId;
-            return;
+	Interval.prototype.getCheck = function(){
+		if (remain[this.buttonId] !== this.lastRemain){
+        	this.lastRemain = remain[this.buttonId];
+        	return;
         }
         this.req.abort();
         this.exec += 1;
         if (this.exec > 1 && global_settings.debug){
-            errors += 1, clearInterval(this.interval), Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test <a href='"+this.newUrl+"'>here</a> and try again.");
+        	Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test <a href='"+this.newUrl+"'>here</a> and try again."+$captcha[0].outerHTML, Resume);
         } else {
-            this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, this.buttonId, this.iframeId, this)});
+        	var _this = this;
+            this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)});
         }
-    }
+	}
+	Interval.prototype.makeGetInterval = function(){
+		var _this = this;
+		this.interval = setInterval(function(){ _this.getCheck()}, global_settings.errTimeout*1000);
+		this.req = $.get(newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)}); 
+	}
 
-    interval.interval = setInterval(function(){interval.getCheck()}, global_settings.errTimeout*1000);
-    interval.req = $.get(newUrl, function(xhr){GetFromPage(xhr, buttonId, iframeId, interval)});
+    var newUrl = eps[index];
+    var interval = new Interval({'lastRemain':remain.buttonId, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId, 'index':index, 'make':'makeGetInterval'});
+    processes.push(interval);
+    interval[interval.make]();
 }
 
-function GetFromPage(xhr, buttonId, iframeId, interval){
+function GetFromPage(xhr, buttonId, iframeId, interval, index){
+	if (xhr.indexOf("recaptcha") > -1) interval.exec = 5, interval.getCheck();
+	if (!xhr.split("selector")[1]) return;
     var $div = $("<div>").html(xhr.split("selector")[1].split("</div>")[0]);
     var text = $div.find('option:contains("'+global_settings.quality.toString()+'")').attr("value");
     if (text === undefined || global_settings.maxQuality){
         text = $div.find('option').eq(0).attr("value");
         if (text === undefined) return;
     }
+    indexes.splice(index, 1);
     var url = asp.wrap(text);
     var titleText = xhr.split("<title>")[1].split("</title>")[0];
-        
-    if (interval) clearInterval(interval.interval);
+    if (interval) interval.kill();
     GetExtVid(url, titleText, buttonId, iframeId);
 }
 
@@ -612,15 +619,42 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
         class: 'extVid'
     });
     $("body").append($iframe);
-
-    var interval = new Object({exec:0, id:iframeId, title:title, url:$iframe.attr("src")});
-    interval.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
-        ($("#dlExt"+this.id).length > 0) ? $('#dlExt'+this.id).attr("src", $('#dlExt'+this.id).attr("src")) : clearInterval(this.interval);
+    
+    Interval.prototype.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
+        ($("#"+this.id).length > 0) ? $('#'+this.id).attr("src", $('#'+this.id).attr("src")) : this.kill();
         this.exec += 1;
-        if (this.exec > 1 && global_settings.debug) errors += 1, clearInterval(this.interval), Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this");
-    };
-    interval.interval = setInterval(function(){interval.iframeCheck()}, global_settings.errTimeout*1000);
+        if (this.exec > 1 && global_settings.debug){
+        	Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", Resume);
+    	};
+    }
+    Interval.prototype.makeIframeInterval = function(){
+    	var _this = this;
+		this.interval = setInterval(function(){ _this.iframeCheck()}, global_settings.errTimeout*1000);
+	}
+
+    var interval = new Interval({id:iframeId, title:title, url:$iframe.attr("src"), make:'makeIframeInterval'});
+    processes.push(interval);
+    interval[interval.make]();
 }
+
+function Interval(params){
+	this.params = params || {};
+	this.exec = 0;
+	for (var key in this.params){
+		if (this.params.hasOwnProperty(key)){
+			this[key] = this.params[key];
+		}
+	}
+}
+Interval.prototype.kill = function(){
+	clearInterval(this.interval);
+    processes.splice(this, 1);
+}
+Interval.prototype.reset = function(){
+	this.exec = 0;
+	this[this.make]();
+}
+
 
 function ButtonState(id, enable){
     if (enable !== 'undefined'){    
@@ -643,10 +677,10 @@ $(document).ready(function(){
     var messageEvent = eventMethod == "attachEvent" ? "onmessage" : "message";
 
     // Listen to message from child IFrame window
-    eventer(messageEvent, function (e){
+    eventer(messageEvent, function(e){
         if (e.origin){
             if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
-                $("#dlExt"+e.data.iframeId).remove();
+                $("#"+e.data.iframeId).remove();
                 if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
 
                 remain[e.data.buttonId]--;
@@ -671,7 +705,7 @@ function ProcessJDownload(){
 }
 
 function SortJDownload(a, b){
-    return Number(a.split("Episode%20")[1].substr(0,3)) - Number(b.split("Episode%20")[1].substr(0,3));
+    return Number(a.split("Episode%20")[0].substr(0,3)) - Number(b.split("Episode%20")[0].substr(0,3));
 }
 
 //Misc functions
@@ -692,7 +726,11 @@ function Lightbox(id, $container, params){
     LockScroll($container);
     var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':'auto','margin-top':'8px','display':'block'}});
     $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
-    closeBtn.click(this.disable);
+    var _this = this;
+    closeBtn.click({_this:_this, params:params}, function(e){
+    	e.data._this.disable();
+    	if (e.data.params.closeHandler) e.data.params.closeHandler(e.data.params)
+   	});
     
     var $box = $("<div>", {
         style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8;z-index:99",
@@ -708,13 +746,19 @@ function Lightbox(id, $container, params){
     if (params.wrapCss) $wrap.css(params.wrapCss);
     if (params.contCss) $content.css(params.contCss);
     if (params.selectable) $content.removeClass("unselectable");
-    $("body").append($box).append($wrap);
+    if ($("#"+id).length === 0) {
+    	$("body").append($box).append($wrap);
+    } else {
+    	$("#"+id).html($("#"+id).html()+$container.html());
+    }
 }
 
-function Error(text){
+function Error(text, callback){
+	KillProcesses();
     var $container = $("<div>", {class:"settingsWindow"}).append("<p>You have encountered an error. Please send details of this error to the developer at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader/feedback'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader/issues'>GitHub</a>.</p>");
     $container.append($("<p>", {html:text}));
-    var light = new Lightbox("Error", $container, {'selectable':true, 'count':errors});
+    if ($("#Error").length > 0) $container = $("<p>", {html:text});
+    var light = new Lightbox("Error", $container, {'selectable':true, 'count':errors, 'closeHandler':callback});
     light.enable();
 }
 
@@ -727,17 +771,65 @@ function LockScroll($element){
     });
 }
 
-function timeout(range, time, callback){
-    var i = range[0];
-    callback(i);
-    Loop();
-    function Loop(){
+function timeout(params){
+	params = params || {};
+	for (var key in params){
+		if (params.hasOwnProperty(key)){
+			this[key] = params[key];
+		}
+	}
+    this.loop = function(){
+        this.callback(this.range[0]);
+        var _this = this;
         setTimeout(function(){
-            i++;
-            if (i<range[1]){
-                callback(i);
-                Loop();
+            _this.range[0]++;
+            if (_this.range[0]<_this.range[1]){
+                _this.loop();
             }
-        }, time*1000);
-    } 
+        }, this.time*1000)
+    }
+    this.kill = function(){
+   		this.range[0] = this.range[1];
+   	}
+    processes.push(this);
+    this.loop();
+}
+timeout.prototype.reset = function(){
+    processes.push(new timeout({range:[0, indexes.length], time:global_settings.waitTime, callback:function(i){ //execute a for loop for range, execute every certain amount of seconds
+        CreateAnother(indexes[i], buttonId, buttonId+"_"+i);
+    }}));
+    processes.splice(processes.indexOf(this), 1);
+}
+
+function MakeCss(cssArray){
+    $("<style type='text/css'>"+cssArray.join("\n")+"</style>").appendTo("head");
+}
+
+$('body').on("DOMNodeInserted", ".captcha", function(e){ //Captcha handling
+	if ($(".captcha").length > 1) $(".captcha:gt(0)").remove();
+	$(e.target).hide();
+	$(e.target).load(function(){
+		$(this).show();
+	});
+});
+
+function SetupGlobalSettings(){
+	for (var key in default_setings){
+	    if (default_setings.hasOwnProperty(key)){
+	        if (global_settings[key] === undefined || global_settings[key] === null){
+	            global_settings[key] = default_setings[key];
+	        }
+	    }
+	}
+	UpdateGlobalSettings();
+}
+
+function UpdateGlobalSettings(){
+    localStorage.setObject('global_settings', global_settings);
+}
+
+function KillProcesses(){
+	for (var i = 0; i<processes.length; i++){
+		processes[i].kill();
+	}
 }
