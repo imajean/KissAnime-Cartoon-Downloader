@@ -100,7 +100,7 @@ var css = [
 MakeCss(css);
 
 linkSplit = window.location.href.split('.');
-var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:500px", seamless:true, src:linkSplit[0]+"."+linkSplit[1].split("/")[0]+'/Special/AreYouHuman?reUrl=hi', class:'captcha'});
+var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:200px", seamless:true, src:linkSplit[0]+"."+linkSplit[1].split("/")[0]+'/Special/AreYouHuman?reUrl=hi', class:'captcha'});
 
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
@@ -568,7 +568,7 @@ function CreateAnother(index, buttonId, iframeId){
         this.req.abort();
         this.exec += 1;
         if (this.exec > 1 && global_settings.debug){
-        	Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test <a href='"+this.newUrl+"'>here</a> and try again."+$captcha[0].outerHTML, Resume);
+        	Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test <a href='"+this.newUrl+"'>here</a> and try again."+$captcha[0].outerHTML, ResumeProcesses);
         } else {
         	var _this = this;
             this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)});
@@ -729,7 +729,7 @@ function Lightbox(id, $container, params){
     var _this = this;
     closeBtn.click({_this:_this, params:params}, function(e){
     	e.data._this.disable();
-        if (e.data.params.closeHandler) e.data.params.closeHandler()
+        if ($.isFunction(e.data.params.closeHandler)) e.data.params.closeHandler()
    	});
     
     var $box = $("<div>", {
@@ -789,7 +789,7 @@ function timeout(params){
         }, this.time*1000)
     }
     this.kill = function(remove){
-        this.oldRange = range[0];
+        this.oldRange = this.range[0];
    		this.range[0] = this.range[1];
         if (remove) processes.splice(this, 1);
    	}
