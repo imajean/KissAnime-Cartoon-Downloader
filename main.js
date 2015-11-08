@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.37
+// @version      0.38
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -102,7 +102,6 @@ MakeCss(css);
 linkSplit = window.location.href.split('.');
 var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:200px", seamless:true, src:linkSplit[0]+"."+linkSplit[1].split("/")[0]+'/Special/AreYouHuman?reUrl=hi', class:'captcha'});
 
-
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
 if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").length > 0){
     currentWindow = "episode";
@@ -151,6 +150,10 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
 //------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
 } else if (window.location.href.indexOf("Special") > -1){
 	$("body").html($("#formVerify"));
+    window.onbeforeunload = function(){
+        var host = GetHost();
+        window.parent.postMessage({origin:host, class:'captcha'}, host);
+    };
 
 //------------------------------------------------------------------          PART IV              -------------------------------------------------------------------------------------*/
 } else if (window.location.href.indexOf("google") > -1){ //called by GetVid as a result of an iframe
@@ -568,7 +571,7 @@ function CreateAnother(index, buttonId, iframeId){
         this.req.abort();
         this.exec += 1;
         if (this.exec > 1 && global_settings.debug){
-        	Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test <a href='"+this.newUrl+"'>here</a> and try again."+$captcha[0].outerHTML, ResumeProcesses, this, true);
+        	Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test and try again."+$captcha[0].outerHTML, ResumeProcesses, this);
         } else {
         	var _this = this;
             this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)});
@@ -607,11 +610,22 @@ function GetExtVid(url, titleText, buttonId, iframeId){ //Get the link for a new
     GetVid(url, title, buttonId, iframeId);
 }
 
+function GetHost(){
+    split = ".com";
+    if (window.location.href.split(".to").length > 1){
+        split = ".to";
+    } else if (window.location.href.split(".me").length > 1){
+        split = ".me";
+    }
+    return window.location.href.split(split)[0]+split;
+}
+
 function GetVid(link, title, buttonId, iframeId){ //Force the download to be started from an iframe
     if (global_settings.remSubDub === "true"){
         title = title.replace(" (Dub)", "").replace(" (Sub)", "");
     }
-    var settings = {"title":encodeURIComponent(title), "host":window.location.href.split(".com")[0]+".com", "downloadTo":global_settings.downloadTo, "buttonId":buttonId, "iframeId":iframeId};
+    var host = GetHost();
+    var settings = {"title":encodeURIComponent(title), "host":host, "downloadTo":global_settings.downloadTo, "buttonId":buttonId, "iframeId":iframeId};
     var $iframe = $("<iframe>", { //Send video to other script to be downloaded.
         src: link + "#" + JSON.stringify(settings),
         style: "width:0;height:0",
@@ -675,7 +689,7 @@ function ButtonState(id, enable){
 $(document).ready(function(){
     var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
     var eventer = window[eventMethod];
-    var messageEvent = eventMethod == "attachEvent" ? "onmessage" : "message";
+    var messageEvent = (eventMethod === "attachEvent") ? "onmessage" : "message";
 
     // Listen to message from child IFrame window
     eventer(messageEvent, function(e){
@@ -691,7 +705,9 @@ $(document).ready(function(){
                     if (global_settings.downloadTo === 'jDownload') ProcessJDownload();
                     window.onbeforeunload = null; //Remove leave confirmation
                     setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
-                } 
+                }
+            } else if (e.origin.split(window.location.host).length > 1){
+                $('.'+e.data.class).remove();
             }
         }
     }, false); 
@@ -725,18 +741,23 @@ function Lightbox(id, $container, params){
     var $content = $("<div>").append("<h1 class='coolfont' style='padding:0.5em;text-align:center'>"+id+"</h1>");
     $content.append($container);
     LockScroll($container);
-    var closeBtn = new MakeButton({text:"Close", objectOnly:true, css:{'margin':'auto','margin-top':'8px','display':'block'}});
-    $content.append($("<div>", {'style':'height:100%;position:relative'}).append(closeBtn));
+
+    var closeText = ($.isFunction(params.closeHandler)) ? 'Retry' : 'Close';
+    var closeBtn = new MakeButton({text:closeText, objectOnly:true, css:{'margin':'auto','margin-top':'8px','display':'inline-block'}});
+    $content.append($("<div>", {'style':'height:100%;position:relative;text-align:center'}).append(closeBtn));
+    
+    this.closeHandle = function(e){
+        e.data._this.disable();
+        if ($.isFunction(e.data.params.closeHandler)) e.data.params.closeHandler();
+    }
+
     var _this = this;
-    closeBtn.click({_this:_this, params:params}, function(e){
-    	e.data._this.disable();
-        if ($.isFunction(e.data.params.closeHandler)) e.data.params.closeHandler()
-   	});
+    closeBtn.click({_this:_this, params:params}, this.closeHandle);
     
     var $box = $("<div>", {
         style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8;z-index:99",
         id:id+count+'_box'
-    }).click(this.disable);
+    }).click({_this:_this, params:params}, this.closeHandle);
     
     $content.css("margin", "0.5em 1em").addClass("unselectable");
     var $wrap = $("<div>", {
@@ -747,20 +768,21 @@ function Lightbox(id, $container, params){
     if (params.wrapCss) $wrap.css(params.wrapCss);
     if (params.contCss) $content.css(params.contCss);
     if (params.selectable) $content.removeClass("unselectable");
-    if ($("#"+id).length === 0) {
+    if ($("#"+id+"_content").length === 0) {
     	$("body").append($box).append($wrap);
     } else {
-    	$("#"+id).html($("#"+id).html()+$container.html());
+    	$("#"+id+"_content .settingsWindow").html($("#"+id+"_content .settingsWindow").html()+$container.html());
     }
 }
 
-function Error(text, callback, element, all){
-	if (all) KillProcesses();
-    if (!all && element) element.kill();
+function Error(text, callback, element){
+    if (element) (element.killAll) ? KillProcesses() : element.kill();
+
     var $container = $("<div>", {class:"settingsWindow"}).append("<p>You have encountered an error. Please send details of this error to the developer at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader/feedback'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader/issues'>GitHub</a>.</p>");
     $container.append($("<p>", {html:text}));
-    if ($("#Error").length > 0) $container = $("<p>", {html:text});
-    var light = new Lightbox("Error", $container, {'selectable':true, 'count':errors, 'closeHandler':ResumeProcesses});
+    if ($("#Error_content").length > 0) $container = $("<p>", {html:text});
+    var options = ($("#Error_content").length === 0) ? {'selectable':true, 'count':errors, 'closeHandler':ResumeProcesses} : {};
+    var light = new Lightbox("Error", $container, options);
     light.enable();
 }
 
@@ -838,6 +860,8 @@ function KillProcesses(){
 	}
 }
 function ResumeProcesses(){
+    $("#Error_content").remove();
+    $("#Error_box").remove();
     for (var i = 0; i<processes.length; i++){
         if (processes[i].active === false) processes[i].resume(), processes[i].active = true;
     }
