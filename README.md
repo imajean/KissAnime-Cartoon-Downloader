@@ -41,7 +41,7 @@ The options of the script can be configured using the settings menu. From this m
 
 ![Settings](https://raw.githubusercontent.com/Domination9987/KissAnime-Cartoon-Downloader/master/screenshots/settings.jpg "Settings window")
 
-  ##### Filename parameters
+##### Filename parameters
   + The "Remove Dub/Sub" checkbox removes the "(Sub)" or "(Dub)" from the name of the file when saving.
 
 ##### Downloading parameters
