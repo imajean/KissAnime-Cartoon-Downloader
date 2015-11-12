@@ -190,6 +190,34 @@ function SaveToDisk(link, settings){
     setTimeout(function(){window.parent.postMessage(returnObj, settings.host);}, 500); //Iframe parent message    
 }
 
+// IFrame cross-browser stuff, removes the iframe when it has loaded...
+$(document).ready(function(){
+    var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
+    var eventer = window[eventMethod];
+    var messageEvent = (eventMethod === "attachEvent") ? "onmessage" : "message";
+
+    // Listen to message from child IFrame window
+    eventer(messageEvent, function(e){
+        if (e.origin){
+            if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
+                $("#"+e.data.iframeId).remove();
+                if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
+
+                remain[e.data.buttonId]--;
+                if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain[e.data.buttonId]+" remaining");
+                if (remain[e.data.buttonId] === 0){
+                    $("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
+                    if (global_settings.downloadTo === 'jDownload') ProcessJDownload();
+                    window.onbeforeunload = null; //Remove leave confirmation
+                    setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
+                }
+            } else if (e.origin.split(window.location.host).length > 1){
+                $('.'+e.data.class).remove();
+            }
+        }
+    }, false); 
+});
+
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
 function MakeBar(page){
     $("#selectEpisode option:selected").nextAll().andSelf().each(function(){ eps.push($(this).val());});
@@ -670,7 +698,6 @@ Interval.prototype.resume = function(){
 	this[this.make]();
 }
 
-
 function ButtonState(id, enable){
     if (enable !== 'undefined'){    
         if (enable){
@@ -684,34 +711,6 @@ function ButtonState(id, enable){
         return !($("#"+id).hasClass("disabled"));
     }
 }
-
-// IFrame cross-browser stuff, removes the iframe when it has loaded...
-$(document).ready(function(){
-    var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
-    var eventer = window[eventMethod];
-    var messageEvent = (eventMethod === "attachEvent") ? "onmessage" : "message";
-
-    // Listen to message from child IFrame window
-    eventer(messageEvent, function(e){
-        if (e.origin){
-            if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
-                $("#"+e.data.iframeId).remove();
-                if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
-
-                remain[e.data.buttonId]--;
-                if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain[e.data.buttonId]+" remaining");
-                if (remain[e.data.buttonId] === 0){
-                    $("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
-                    if (global_settings.downloadTo === 'jDownload') ProcessJDownload();
-                    window.onbeforeunload = null; //Remove leave confirmation
-                    setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
-                }
-            } else if (e.origin.split(window.location.host).length > 1){
-                $('.'+e.data.class).remove();
-            }
-        }
-    }, false); 
-});
 
 function ProcessJDownload(){
     jDownloadUrls.sort(SortJDownload);
