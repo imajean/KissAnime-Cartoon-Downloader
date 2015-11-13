@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.39
+// @version      0.40
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -83,7 +83,6 @@ var default_setings = {
 };
 SetupGlobalSettings(); //Ensures that all global_settings are set... if not, refer to default_settings
 
-var jDownloadUrls = [];
 var css = [
     ".disabled{ cursor:default!important; color:black!important;}",
     ".coolfont{ background-color:#393939;border:1px solid #666666;color:#ccc;font:normal 15px 'Tahoma', Arial, Helvetica, sans-serif;}",
@@ -186,7 +185,7 @@ function SaveToDisk(link, settings){
     }
 
     var returnObj = {'iframeId':settings.iframeId, 'buttonId':settings.buttonId};
-    if (settings.downloadTo === 'jDownload') returnObj.url = save.href;
+    if (settings.downloadTo === 'jDownload') returnObj.url = save.href, returnObj.title = decodeURIComponent(settings.title);
     setTimeout(function(){window.parent.postMessage(returnObj, settings.host);}, 500); //Iframe parent message    
 }
 
@@ -201,13 +200,17 @@ $(document).ready(function(){
         if (e.origin){
             if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
                 $("#"+e.data.iframeId).remove();
-                if (global_settings.downloadTo === 'jDownload') jDownloadUrls.push(e.data.url);
+                if (global_settings.downloadTo === 'jDownload'){
+                    $.post("http://127.0.0.1:9666/flashgot", {
+                        fnames:e.data.title,
+                        urls:e.data.url
+                    });
+                } 
 
                 remain[e.data.buttonId]--;
                 if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain[e.data.buttonId]+" remaining");
                 if (remain[e.data.buttonId] === 0){
                     $("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
-                    if (global_settings.downloadTo === 'jDownload') ProcessJDownload();
                     window.onbeforeunload = null; //Remove leave confirmation
                     setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
                 }
@@ -292,8 +295,6 @@ function MakeButton(params){ //Makes the download button, params include buttonI
     
     function MainDl($this, params, indexes){
         if ($this.hasClass("disabled") === false){
-            jDownloadUrls = [];
-            if ($("#jDownload")) $("#jDownload").remove();
             ButtonState(params.buttonId, false);
             ButtonState("settingsBtn", false);
             
@@ -376,7 +377,7 @@ function MakeSettings(){
     $container = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
         browser:{text:'Download with Browser', info:'Use the browser to download your files'}, 
         idm:{text:'Download with IDM', info:'Use Internet Download Manager to download your files', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
-        jDownload:{text:'Download with JDownloader', info:'Acquire a group of links to paste into JDownloader 2', help:'This can be done by creating a collection of links, which can then be copied and pasted to JDownloader\'s link grabber.'}}, {appendTo:$container});
+        jDownload:{text:'Download with JDownloader', info:'Send links directly to JDownloader 2', help:'This is done using JDownloader\'s flashgot interface, which allows for the URL and the title to be sent directly to JDownloader.'}}, {appendTo:$container});
 
     $container.append("<h2>Select settings</h2>");
     $container = MakeRadio('select', 'Choose your selection method:', {
@@ -710,18 +711,6 @@ function ButtonState(id, enable){
     } else if (id){
         return !($("#"+id).hasClass("disabled"));
     }
-}
-
-function ProcessJDownload(){
-    jDownloadUrls.sort(SortJDownload);
-    var $div = $("<textarea>", {id:"jDownload",text:jDownloadUrls.join("\n"),style:"display:block;margin:1em auto;white-space:nowrap;overflow:auto;width:90%;padding:1em;height:5em"});
-    if (currentWindow === 'episode') $("#centerDivVideo").after($div);
-    if (currentWindow === 'series') $("table.listing").before($div);
-    $div.select();
-}
-
-function SortJDownload(a, b){
-    return Number(a.split("Episode%20")[0].substr(0,3)) - Number(b.split("Episode%20")[0].substr(0,3));
 }
 
 //Misc functions
