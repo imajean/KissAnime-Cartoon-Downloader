@@ -674,7 +674,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 		this.interval = setInterval(function(){ _this.iframeCheck()}, global_settings.errTimeout*1000);
 	}
 
-    var interval = new Interval({id:iframeId, title:title, url:$iframe.attr("src"), make:'makeIframeInterval'});
+    var interval = new Interval({id:iframeId, title:title, make:'makeIframeInterval'});
     processes.push(interval);
     interval[interval.make]();
 }
