@@ -50,7 +50,7 @@ The options of the script can be configured using the settings menu. From this m
 + The  "Download Options" radio selection can be explained as follows:
   + "Download with Browser" forces the script to download the files through the browser's download interface
   + "Download with IDM" forces the script to download through IDM, by the use of the [Chrome](http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html) or [Firefox](http://getidmcc.com/) IDM plugins. If it doesn't work it falls back to "Download with Browser"
-  + "Download with JDownloader" sends the links directly to JDownloader 2 through the flashgot API. This option currently **has no fallback**
+  + "Download with JDownloader" sends the links directly to JDownloader 2 through the flashgot API. This option currently **has no fallback**, and requires that JDownloader is **open**
 
 ##### Select Settings
 + There are two options for selection method, relevant only to the [Series Page](#series-page)
@@ -71,7 +71,7 @@ It is important to note that upon **closing any Error window** the script will *
 + (iframeCheck): This is an error that indicates that the source of the video is not correctly redirecting. This could be the cause of a broken link supplied by the site host, or it could be the result of slow connection to the server. A fix for this is to increase the "Error Timeout" range slider in settings.
 + (getCheck): This is an error that indicates that the script cannot receive pages from the server. This is an issue as the download links are provided from the episode pages which are obtained through a GET request (which has failed). The solution to this problem (99% of the time) is to fill out the reCAPTCHA provided in the error window.
 
-Credits
+Acknowledgements
 =======
 
 Thanks to Mauz Khan for his [excellent blog](http://muaz-khan.blogspot.com.au/2012/10/save-files-on-disk-using-javascript-or.html) on how to save files to disk using javascript
