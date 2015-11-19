@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.41
+// @version      0.42
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -147,7 +147,7 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
 	});
 
 //------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
-} else if (window.location.href.indexOf("Special") > -1){
+} else if (window.location.href.indexOf("Special/AreYouHuman") > -1){
 	$("body").html($("#formVerify"));
 	window.onbeforeunload = function(){
 		var host = GetHost();
@@ -662,7 +662,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 		($("#"+this.id).length > 0) ? $('#'+this.id).attr("src", $('#'+this.id).attr("src")) : this.kill(true);
 		this.exec += 1;
 		if (this.exec > 1 && global_settings.debug){
-			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", Resume, this);
+			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", ResumeProcesses, this);
 		};
 	}
 	Interval.prototype.makeIframeInterval = function(){
