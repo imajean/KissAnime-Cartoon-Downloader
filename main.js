@@ -577,10 +577,10 @@ function DownloadCurrent(quality, buttonId){
 
 function DownloadVideos(indexes, buttonId){ //Where indexes refer to the indexes of the videos
 	indexes.sort(sortNumber);
-	processes.push(new timeout({range:[0, indexes.length], time:global_settings.waitTime, callback:function(i){ //execute a for loop for range, execute every certain amount of seconds
+	new timeout({range:[0, indexes.length], time:global_settings.waitTime, callback:function(i){ //execute a for loop for range, execute every certain amount of seconds
 		CreateAnother(indexes[i], buttonId, buttonId+"_"+i);
 		if (i === this.range[1]-1) this.kill(true);
-	}}));
+	}});
 }
 
 function sortNumber(a,b) {
@@ -609,9 +609,7 @@ function CreateAnother(index, buttonId, iframeId){
 	}
 
 	var newUrl = eps[index];
-	var interval = new Interval({'lastRemain':remain.buttonId, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId, 'index':index, 'make':'makeGetInterval'});
-	processes.push(interval);
-	interval[interval.make]();
+	new Interval({'lastRemain':remain.buttonId, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId, 'index':index, 'make':'makeGetInterval'});
 }
 
 function GetFromPage(xhr, buttonId, iframeId, interval, index){
@@ -674,9 +672,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 		this.interval = setInterval(function(){ _this.iframeCheck()}, global_settings.errTimeout*1000);
 	}
 
-	var interval = new Interval({id:iframeId, title:title, make:'makeIframeInterval'});
-	processes.push(interval);
-	interval[interval.make]();
+	new Interval({id:iframeId, title:title, make:'makeIframeInterval'});
 }
 
 function Interval(params){
@@ -687,11 +683,14 @@ function Interval(params){
 			this[key] = this.params[key];
 		}
 	}
+	processes.push(this);
+	if (this.make) this[this.make]();
 }
 Interval.prototype.kill = function(remove){
 	clearInterval(this.interval);
 	this.active = false;
 	if (remove) processes.splice(processes.indexOf(this), 1);
+	if ($("#"+this.id).attr("src")) $("#"+this.id).attr("src", "www.google.com")
 }
 Interval.prototype.resume = function(){
 	this.exec = 0;
@@ -804,7 +803,6 @@ function timeout(params){
 		this.range[0] = this.range[1];
 		this.active = false;
 		if (remove) processes.splice(processes.indexOf(this), 1);
-		if ($("#"+this.id).attr("src")) $("#"+this.id).attr("src", "www.google.com")
 	}
 	processes.push(this);
 	this.loop();
@@ -812,7 +810,7 @@ function timeout(params){
 timeout.prototype.resume = function(){
 	processes.splice(processes.indexOf(this), 1);
 	this.params.range[0] = this.oldRange;
-	processes.push(new timeout(this.params));
+	new timeout(this.params);
 }
 
 function MakeCss(cssArray){
@@ -848,6 +846,7 @@ function KillProcesses(){
 	}
 }
 function ResumeProcesses(){
+	console.log(processes);
 	$("#Error_content").remove();
 	$("#Error_box").remove();
 	var procLen = processes.length;
