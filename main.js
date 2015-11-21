@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.43
+// @version      0.44
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -185,36 +185,36 @@ function SaveToDisk(link, settings){
 }
 
 // IFrame cross-browser stuff, removes the iframe when it has loaded...
-$(document).ready(function(){
-	var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
-	var eventer = window[eventMethod];
-	var messageEvent = (eventMethod === "attachEvent") ? "onmessage" : "message";
+var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
+var eventer = window[eventMethod];
+var messageEvent = (eventMethod === "attachEvent") ? "onmessage" : "message";
 
-	// Listen to message from child IFrame window
-	eventer(messageEvent, function(e){
-		if (e.origin){
-			if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
-				$("#"+e.data.iframeId).remove();
-				if (global_settings.downloadTo === 'jDownload'){
-					$.post("http://127.0.0.1:9666/flashgot", {
-						fnames:e.data.title+".mp4",
-						urls:e.data.url
-					});
-				} 
+// Listen to message from child IFrame window
+$(window).on(messageEvent, function(e){
+	var e = e.originalEvent;
+	if (e.origin){
+		if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
+			$("#"+e.data.iframeId).remove();
+			if (global_settings.downloadTo === 'jDownload'){
+				$.post("http://127.0.0.1:9666/flashgot", {
+					fnames:e.data.title+".mp4",
+					urls:e.data.url
+				});
+			} 
 
-				remain[e.data.buttonId]--;
-				if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain[e.data.buttonId]+" remaining");
-				if (remain[e.data.buttonId] === 0){
-					$("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
-					window.onbeforeunload = null; //Remove leave confirmation
-					setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
-				}
-			} else if (e.origin.split(window.location.host).length > 1){
-				$('.'+e.data.class).remove();
+			remain[e.data.buttonId]--;
+			if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain[e.data.buttonId]+" remaining");
+			if (remain[e.data.buttonId] === 0){
+				$("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
+				window.onbeforeunload = null; //Remove leave confirmation
+				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
 			}
+		} else if (e.origin.split(window.location.host).length > 1){
+			$('.'+e.data.class).remove();
 		}
-	}, false); 
-});
+	}
+}); 
+
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
 function MakeBar(page){
@@ -846,7 +846,6 @@ function KillProcesses(){
 	}
 }
 function ResumeProcesses(){
-	console.log(processes);
 	$("#Error_content").remove();
 	$("#Error_box").remove();
 	var procLen = processes.length;
