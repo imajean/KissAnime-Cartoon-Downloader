@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.42
+// @version      0.43
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -579,6 +579,7 @@ function DownloadVideos(indexes, buttonId){ //Where indexes refer to the indexes
 	indexes.sort(sortNumber);
 	processes.push(new timeout({range:[0, indexes.length], time:global_settings.waitTime, callback:function(i){ //execute a for loop for range, execute every certain amount of seconds
 		CreateAnother(indexes[i], buttonId, buttonId+"_"+i);
+		if (i === this.range[1]-1) this.kill(true);
 	}}));
 }
 
@@ -656,16 +657,19 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 		id: iframeId,
 		class: 'extVid'
 	});
+	$iframe.attr("realSrc", $iframe.attr("src"));
 	$("body").append($iframe);
 	
 	Interval.prototype.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
-		($("#"+this.id).length > 0) ? $('#'+this.id).attr("src", $('#'+this.id).attr("src")) : this.kill(true);
+		var exist = ($("#"+this.id).length > 0);
+		exist ? $('#'+this.id).attr("src", $('#'+this.id).attr("realSrc")) : this.kill(true);
 		this.exec += 1;
-		if (this.exec > 1 && global_settings.debug){
+		if (this.exec > 1 && global_settings.debug && exist){
 			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", ResumeProcesses, this);
 		};
 	}
 	Interval.prototype.makeIframeInterval = function(){
+		$("#"+this.id).attr("src", $("#"+this.id).attr("realSrc"));
 		var _this = this;
 		this.interval = setInterval(function(){ _this.iframeCheck()}, global_settings.errTimeout*1000);
 	}
@@ -687,7 +691,7 @@ function Interval(params){
 Interval.prototype.kill = function(remove){
 	clearInterval(this.interval);
 	this.active = false;
-	if (remove) processes.splice(this, 1);
+	if (remove) processes.splice(processes.indexOf(this), 1);
 }
 Interval.prototype.resume = function(){
 	this.exec = 0;
@@ -764,7 +768,7 @@ function Error(text, callback, element){
 	var $container = $("<div>", {class:"settingsWindow"}).append("<p>You have encountered an error. Please send details of this error to the developer at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader/feedback'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader/issues'>GitHub</a>.</p>");
 	$container.append($("<p>", {html:text}));
 	if ($("#Error_content").length > 0) $container = $("<p>", {html:text});
-	var options = ($("#Error_content").length === 0) ? {'selectable':true, 'count':errors, 'closeHandler':ResumeProcesses} : {};
+	var options = ($("#Error_content").length === 0) ? {'selectable':true, 'count':errors, 'closeHandler':callback} : {};
 	var light = new Lightbox("Error", $container, options);
 	light.enable();
 }
@@ -799,7 +803,8 @@ function timeout(params){
 		this.oldRange = this.range[0];
 		this.range[0] = this.range[1];
 		this.active = false;
-		if (remove) processes.splice(this, 1);
+		if (remove) processes.splice(processes.indexOf(this), 1);
+		if ($("#"+this.id).attr("src")) $("#"+this.id).attr("src", "www.google.com")
 	}
 	processes.push(this);
 	this.loop();
@@ -845,7 +850,8 @@ function KillProcesses(){
 function ResumeProcesses(){
 	$("#Error_content").remove();
 	$("#Error_box").remove();
-	for (var i = 0; i<processes.length; i++){
+	var procLen = processes.length;
+	for (var i = 0; i<procLen; i++){
 		if (processes[i].active === false) processes[i].resume(), processes[i].active = true;
 	}
 }
