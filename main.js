@@ -605,7 +605,7 @@ function CreateAnother(index, buttonId, iframeId){
 	Interval.prototype.makeGetInterval = function(){
 		var _this = this;
 		this.interval = setInterval(function(){ _this.getCheck()}, global_settings.errTimeout*1000);
-		this.req = $.get(newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)}); 
+		this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)}); 
 	}
 
 	var newUrl = eps[index];
