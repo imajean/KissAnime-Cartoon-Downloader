@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.44
+// @version      0.45
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
 // @match        http://kissanime.com/Anime/*
 // @match        http://kissanime.to/Anime/*
+// @match        https://kissanime.to/Anime/*
 // @match        http://kissasian.com/Drama/*
 // @match        http://kisscartoon.me/Cartoon/*
 // @match        https://*.googlevideo.com/*
@@ -644,6 +645,7 @@ function GetHost(){
 }
 
 function GetVid(link, title, buttonId, iframeId){ //Force the download to be started from an iframe
+	link = link.replace("http", "https"); //Required for the KissAnime https host
 	if (global_settings.remSubDub === "true"){
 		title = title.replace(" (Dub)", "").replace(" (Sub)", "");
 	}
