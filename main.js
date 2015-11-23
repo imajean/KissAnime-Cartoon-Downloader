@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.45
+// @version      0.46
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -14,6 +14,7 @@
 // @match        https://*.c.docs.google.com/*
 // @match        http://kissanime.to/Special/AreYouHuman*
 // @match        http://kissanime.com/Special/AreYouHuman*
+// @match        https://kissanime.to/Special/AreYouHuman*
 // @license      Creative Commons; http://creativecommons.org/licenses/by/4.0/
 // @require      http://code.jquery.com/jquery-1.11.0.min.js
 // @grant        none
@@ -24,7 +25,8 @@ This script contains four parts
  1. The download bar handler
  2. The series page handler
  3. Handles iframe captcha
- 4. The downloading video handler << This is the google docs sites
+ 4. Proxy frame which provides the video handler frame
+ 5. The downloading video handler << This is the google docs sites
  */
 
 //Misc functions
@@ -103,7 +105,7 @@ linkSplit = window.location.href.split('.');
 var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:200px", seamless:true, src:linkSplit[0]+"."+linkSplit[1].split("/")[0]+'/Special/AreYouHuman?reUrl=hi', class:'captcha'});
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
-if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").length > 0){
+if (window.location.href.contains(["Episode", "Movie", "Preview"]) && $("#selectEpisode").length > 0 && window.location.href.indexOf("#") === -1){
 	currentWindow = "episode";
 
 	//Fix styling
@@ -155,7 +157,14 @@ if (window.location.href.contains(["Episode", "Movie"]) && $("#selectEpisode").l
 		window.parent.postMessage({origin:host, class:'captcha'}, host);
 	};
 
-//------------------------------------------------------------------          PART IV              -------------------------------------------------------------------------------------*/
+//------------------------------------------------------------------          PART IV             -------------------------------------------------------------------------------------*/
+} else if (window.location.href.contains(["Episode", "Movie", "Preview"]) && $("#selectEpisode").length > 0){
+	$("body").html("");
+	var src = window.location.href.split("#");
+	src.shift();
+	$("body").append($("<iframe>", {src:src.join("#")}));
+
+//------------------------------------------------------------------           PART V              -------------------------------------------------------------------------------------*/
 } else if (window.location.href.indexOf("google") > -1){ //called by GetVid as a result of an iframe
 	var link = window.location.href;
 	if (link.split('#').length > 1 && link.split("downloadTo").length > 1){
@@ -180,7 +189,7 @@ function SaveToDisk(link, settings){
 		window.location.href = save.href;
 	}
 
-	var returnObj = {'iframeId':settings.iframeId, 'buttonId':settings.buttonId};
+	var returnObj = {'iframeId':settings.iframeId, 'buttonId':settings.buttonId, 'host':settings.host};
 	if (settings.downloadTo === 'jDownload') returnObj.url = save.href, returnObj.title = decodeURIComponent(settings.title);
 	setTimeout(function(){window.parent.postMessage(returnObj, settings.host);}, 500); //Iframe parent message    
 }
@@ -194,7 +203,7 @@ var messageEvent = (eventMethod === "attachEvent") ? "onmessage" : "message";
 $(window).on(messageEvent, function(e){
 	var e = e.originalEvent;
 	if (e.origin){
-		if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
+		if (e.origin.split(window.location.host).length > 1){ //A message from the proxy iframe
 			$("#"+e.data.iframeId).remove();
 			if (global_settings.downloadTo === 'jDownload'){
 				$.post("http://127.0.0.1:9666/flashgot", {
@@ -210,7 +219,10 @@ $(window).on(messageEvent, function(e){
 				window.onbeforeunload = null; //Remove leave confirmation
 				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
 			}
-		} else if (e.origin.split(window.location.host).length > 1){
+		} else if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
+			if (!e.data.host) return;
+			window.parent.postMessage(e.data, e.data.host);	
+		} else if (e.origin.split(window.location.host).length > 1){ //Closes captcha
 			$('.'+e.data.class).remove();
 		}
 	}
@@ -596,7 +608,7 @@ function CreateAnother(index, buttonId, iframeId){
 		}
 		this.req.abort();
 		this.exec += 1;
-		if (this.exec > 1 && global_settings.debug){
+		if (this.exec > 3 && global_settings.debug){
 			Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test and try again."+$captcha[0].outerHTML, ResumeProcesses, this);
 		} else {
 			var _this = this;
@@ -646,13 +658,14 @@ function GetHost(){
 
 function GetVid(link, title, buttonId, iframeId){ //Force the download to be started from an iframe
 	link = link.replace("http", "https"); //Required for the KissAnime https host
+	link = link.replace("httpss", "https");
 	if (global_settings.remSubDub === "true"){
 		title = title.replace(" (Dub)", "").replace(" (Sub)", "");
 	}
 	var host = GetHost();
 	var settings = {"title":encodeURIComponent(title), "host":host, "downloadTo":global_settings.downloadTo, "buttonId":buttonId, "iframeId":iframeId};
 	var $iframe = $("<iframe>", { //Send video to other script to be downloaded.
-		src: link + "#" + JSON.stringify(settings),
+		src: eps[0] + "#" + link + "#" + JSON.stringify(settings),
 		style: "width:0;height:0",
 		id: iframeId,
 		class: 'extVid'
@@ -661,10 +674,15 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 	$("body").append($iframe);
 	
 	Interval.prototype.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
+		this.ChangeSrc = function(){
+			$("#"+this.id).attr("src", "google.com");
+			var _this = this;
+			setTimeout(function(){ $('#'+_this.id).attr("src", $('#'+_this.id).attr("realSrc"))}, 1500);
+		}
 		var exist = ($("#"+this.id).length > 0);
-		exist ? $('#'+this.id).attr("src", $('#'+this.id).attr("realSrc")) : this.kill(true);
+		exist ? this.ChangeSrc() : this.kill(true);
 		this.exec += 1;
-		if (this.exec > 1 && global_settings.debug && exist){
+		if (this.exec > 3 && global_settings.debug && exist){
 			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", ResumeProcesses, this);
 		};
 	}
