@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.46
+// @version      0.47
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -105,7 +105,7 @@ linkSplit = window.location.href.split('.');
 var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:200px", seamless:true, src:linkSplit[0]+"."+linkSplit[1].split("/")[0]+'/Special/AreYouHuman?reUrl=hi', class:'captcha'});
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
-if (window.location.href.contains(["Episode", "Movie", "Preview"]) && $("#selectEpisode").length > 0 && window.location.href.indexOf("#") === -1){
+if (window.location.href.toLowerCase().contains(["episode", "movie", "preview", "ova"]) && $("#selectEpisode").length > 0 && window.location.href.indexOf("#") === -1){
 	currentWindow = "episode";
 
 	//Fix styling
@@ -158,7 +158,7 @@ if (window.location.href.contains(["Episode", "Movie", "Preview"]) && $("#select
 	};
 
 //------------------------------------------------------------------          PART IV             -------------------------------------------------------------------------------------*/
-} else if (window.location.href.contains(["Episode", "Movie", "Preview"]) && $("#selectEpisode").length > 0){
+} else if (window.location.href.toLowerCase().contains(["episode", "movie", "preview", "ova"]) && $("#selectEpisode").length > 0){
 	$("body").html("");
 	var src = window.location.href.split("#");
 	src.shift();
@@ -168,7 +168,8 @@ if (window.location.href.contains(["Episode", "Movie", "Preview"]) && $("#select
 } else if (window.location.href.indexOf("google") > -1){ //called by GetVid as a result of an iframe
 	var link = window.location.href;
 	if (link.split('#').length > 1 && link.split("downloadTo").length > 1){
-		var settings = JSON.parse(link.split("#")[1].replace(/\%22/g,'"').replace(/%0D/g, "")); //settings is an object including title, remain, link, host, downloadTo
+		var settings = JSON.parse(link.split("#")[1].replace(/%0D/g, "")) //settings is an object including title, remain, link, host, downloadTo
+		settings.title = settings.title.replace(/\%22/g,'"');
 		$('body').remove(); //Stop video
 		SaveToDisk(link, settings); //Save
 	}
