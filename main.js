@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.47
+// @version      0.48
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -65,7 +65,7 @@ Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
 var errors = 0;
 var keys = []; //Active keys
 var isDown = false; //A flag that represents if the mouse is down or not
-var currentWindow = null; //The current window that is active
+var currentWindow = WhatPage(); //The current window that is active
 var remain = {};  //How many downloads remain...
 var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
@@ -97,7 +97,8 @@ var css = [
 ".settingsWindow{ width:100%;height:200px;overflow-y:scroll;border:1px solid gray;border-width:1px 0;}",
 ".settingsWindow a{ color:red}",
 ".settingsWindow h2{ margin-bottom:0.2em}",
-".inputdiv { padding:0.4em 0}"
+".inputdiv{ padding:0.4em 0}",
+".hiddenFrame{ width:0;height:0;position:fixed;left:0;top:0"
 ];
 MakeCss(css);
 
@@ -105,9 +106,7 @@ linkSplit = window.location.href.split('.');
 var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:200px", seamless:true, src:linkSplit[0]+"."+linkSplit[1].split("/")[0]+'/Special/AreYouHuman?reUrl=hi', class:'captcha'});
 
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
-if (window.location.href.toLowerCase().contains(["episode", "movie", "preview", "ova"]) && $("#selectEpisode").length > 0 && window.location.href.indexOf("#") === -1){
-	currentWindow = "episode";
-
+if (currentWindow === "episode"){
 	//Fix styling
 	$("#selectPlayer option").each(function(){
 		$(this).html($(this).html().replace("(lightweight, mobile supported)", "").replace("(can preload entire video)", ""));
@@ -131,8 +130,7 @@ if (window.location.href.toLowerCase().contains(["episode", "movie", "preview", 
 	});
 
   //------------------------------------------------------------------          PART II              -------------------------------------------------------------------------------------*/
-} else if ($(".listing").length > 0){ 
-	currentWindow = "series";
+} else if (currentWindow === "series"){ 
 	$.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
 		MakeBar("series");
 
@@ -150,7 +148,7 @@ if (window.location.href.toLowerCase().contains(["episode", "movie", "preview", 
 	});
 
 //------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
-} else if (window.location.href.indexOf("Special/AreYouHuman") > -1){
+} else if (currentWindow === "captcha"){
 	$("body").html($("#formVerify"));
 	window.onbeforeunload = function(){
 		var host = GetHost();
@@ -158,14 +156,14 @@ if (window.location.href.toLowerCase().contains(["episode", "movie", "preview", 
 	};
 
 //------------------------------------------------------------------          PART IV             -------------------------------------------------------------------------------------*/
-} else if (window.location.href.toLowerCase().contains(["episode", "movie", "preview", "ova"]) && $("#selectEpisode").length > 0){
+} else if (currentWindow === "skip"){
 	$("body").html("");
 	var src = window.location.href.split("#");
 	src.shift();
-	$("body").append($("<iframe>", {src:src.join("#")}));
+	$("body").append($("<iframe>", {class:"hiddenFrame", src:src.join("#")}));
 
 //------------------------------------------------------------------           PART V              -------------------------------------------------------------------------------------*/
-} else if (window.location.href.indexOf("google") > -1){ //called by GetVid as a result of an iframe
+} else if (currentWindow === "external"){ //called by GetVid as a result of an iframe
 	var link = window.location.href;
 	if (link.split('#').length > 1 && link.split("downloadTo").length > 1){
 		var settings = JSON.parse(link.split("#")[1].replace(/%0D/g, "")) //settings is an object including title, remain, link, host, downloadTo
@@ -667,9 +665,8 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 	var settings = {"title":encodeURIComponent(title), "host":host, "downloadTo":global_settings.downloadTo, "buttonId":buttonId, "iframeId":iframeId};
 	var $iframe = $("<iframe>", { //Send video to other script to be downloaded.
 		src: eps[0] + "#" + link + "#" + JSON.stringify(settings),
-		style: "width:0;height:0",
 		id: iframeId,
-		class: 'extVid'
+		class: 'extVid hiddenFrame'
 	});
 	$iframe.attr("realSrc", $iframe.attr("src"));
 	$("body").append($iframe);
@@ -873,4 +870,17 @@ function ResumeProcesses(){
 	for (var i = 0; i<procLen; i++){
 		if (processes[i].active === false) processes[i].resume(), processes[i].active = true;
 	}
+}
+
+function WhatPage(){
+	if (window.location.href.indexOf("Special/AreYouHuman") > -1) return "captcha";
+	if (window.location.href.indexOf("google") > -1) return "external";
+
+	var page = (window.location.href.toLowerCase().contains(["anime","cartoon","drama"]));
+	var hash = window.location.href.contains("#");
+	var ep = ($("#centerDivVideo").length > 0);
+
+	if (ep && page && hash) return "skip";
+	if (ep && page) return "episode";
+	if (page) return "series";
 }
