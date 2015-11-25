@@ -667,7 +667,8 @@ function GetHost(){
 function GetVid(link, title, buttonId, iframeId){ //Force the download to be started from an iframe
 	link = link.replace("http", "https"); //Required for the KissAnime https host
 	link = link.replace("httpss", "https");
-	if (global_settings.remSubDub === "true"){
+	global_settings.remSubDub = Boolean(global_settings.remSubDub);
+	if (global_settings.remSubDub === true){
 		title = title.replace(" (Dub)", "").replace(" (Sub)", "");
 	}
 	var host = GetHost();
