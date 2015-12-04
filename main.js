@@ -109,7 +109,7 @@ var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:
 if (currentWindow === "episode"){
 	//Fix styling
 	$("#selectPlayer option").each(function(){
-		$(this).html($(this).html().replace("(lightweight, mobile supported)", "").replace("(can preload entire video)", ""));
+		$(this).html($(this).html().replace("(lightweight, mobile supported)", "").replace("(not recommended)", ""));
 	});
 	$('#switch').parent().children().css('width', 'auto');
 	$('#switch').html($('#switch').html().replace("Turn off the light", "Off"));
