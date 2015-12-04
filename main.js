@@ -132,8 +132,10 @@ if (currentWindow === "episode"){
   //------------------------------------------------------------------          PART II              -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "series"){ 
 	$.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
+		window.seriesCounter = 0;
 		MakeBar("series");
-
+	});
+	window.SeriesAfter = function(){
 		$("#multSelect").change(function(){ //A handler for the changing of the first episode to download
 			var amount = parseInt($("#multSelect option").length) - parseInt($("#multSelect").val(), 10);
 			if ($("#multAmount option").length > amount){
@@ -145,7 +147,7 @@ if (currentWindow === "episode"){
 				$("#multAmount").append($("<option>", {value:i+1, html:i+1}));
 			}
 		});
-	});
+	}
 
 //------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "captcha"){
@@ -230,15 +232,21 @@ $(window).on(messageEvent, function(e){
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
 function MakeBar(page){
-	$("#selectEpisode option:selected").nextAll().andSelf().each(function(){ eps.push($(this).val());});
-	$(".listing a").each(function(){ eps.unshift($(this).attr("href"));});
 	if (page === 'episode'){
+		$("#selectEpisode option:selected").nextAll().andSelf().each(function(){ eps.push($(this).val());});
 		bar = $('#selectPlayer').parent().parent(); //The bar that contains quality + download buttons
 		MakeMultiple("multAmount", {appendTo:bar, info:"Select the amount of episodes after and including the starting episode", numeric:true, range:[1,eps.length+1]});
 		MakeButton({first:true, id:"dlButton", text:"Download", handler:"main"});
 		MakeQuality();
 		MakeSettings();
 	} else if (page === 'series'){
+		$(".listing a").each(function(){ eps.unshift($(this).attr("href"));});
+		if (eps.length === 0){
+			if (seriesCounter > 4) return;
+			setTimeout(function(){ MakeBar("series")}, 5000);
+			seriesCounter++;
+			return
+		}
 		$(".listing").before($("<div>", {id:'bar'}));
 		bar = $("#bar");
 		MakeMultiple("multSelect", {appendTo:bar, info:"Select the episode you would like to start downloading from", numeric:true, range:[1,eps.length+1]});
@@ -248,6 +256,7 @@ function MakeBar(page){
 		MakeButton({id:"dlButton_sel", text:"Download Selected", handler:"select", disabled:true});
 		MakeSettings();
 		MakeCheckboxes();
+		SeriesAfter();
 	}
 }
 
