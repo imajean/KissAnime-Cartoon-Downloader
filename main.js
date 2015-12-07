@@ -269,7 +269,7 @@ function MakeQuality(){ //Makes the quality switch
 		$.get(eps[0], function(xhr){
 			var options = [];
 			var text = xhr.split("selector")[1];
-			(text) ? text = text.split("</div>")[0] : Error($captcha, MakeQuality);
+			(text) ? text = text.split("</div>")[0] : Error($captcha, function(){ setTimeout(function(){ MakeQuality()}, 5000)});
 			if (!text) return;
 			var $div = $("<div>").html(text);
 			$div.find("option").each(function(){
