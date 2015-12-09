@@ -192,7 +192,7 @@ function SaveToDisk(link, settings){
 
 	var returnObj = {'iframeId':settings.iframeId, 'buttonId':settings.buttonId, 'host':settings.host};
 	if (settings.downloadTo === 'jDownload') returnObj.url = save.href, returnObj.title = decodeURIComponent(settings.title);
-	setTimeout(function(){window.parent.postMessage(returnObj, settings.host);}, 500); //Iframe parent message    
+	window.parent.postMessage(returnObj, settings.host); //Iframe parent message    
 }
 
 // IFrame cross-browser stuff, removes the iframe when it has loaded...
@@ -688,11 +688,12 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 			setTimeout(function(){ $('#'+_this.id).attr("src", $('#'+_this.id).attr("realSrc"))}, 1500);
 		}
 		var exist = ($("#"+this.id).length > 0);
-		exist ? this.ChangeSrc() : this.kill(true);
-		this.exec += 1;
-		if (this.exec > 3 && global_settings.debug && exist){
+		if (this.exec > 4 && global_settings.debug && exist){
 			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", ResumeProcesses, this);
-		};
+		} else if (this.exec <= 4){
+			(exist) ? this.ChangeSrc() : this.kill(true);
+		}
+		this.exec += 1;
 	}
 	Interval.prototype.makeIframeInterval = function(){
 		$("#"+this.id).attr("src", $("#"+this.id).attr("realSrc"));
