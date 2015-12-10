@@ -14,6 +14,7 @@
 // @match        https://*.c.docs.google.com/*
 // @match        http://kissanime.to/Special/AreYouHuman*
 // @match        http://kissanime.com/Special/AreYouHuman*
+// @match        https://kissanime.to/Special/hi
 // @match        https://kissanime.to/Special/AreYouHuman*
 // @license      Creative Commons; http://creativecommons.org/licenses/by/4.0/
 // @require      http://code.jquery.com/jquery-1.11.0.min.js
@@ -152,26 +153,27 @@ if (currentWindow === "episode"){
 //------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "captcha"){
 	$("body").html($("#formVerify"));
-	window.onbeforeunload = function(){
-		var host = GetHost();
-		window.parent.postMessage({origin:host, class:'captcha'}, host);
-	};
 
 //------------------------------------------------------------------          PART IV             -------------------------------------------------------------------------------------*/
+} else if (currentWindow === "captcha2"){
+	var host = GetHost();
+	window.parent.postMessage({origin:host, class:'captcha'}, host);
+
+//------------------------------------------------------------------          PART V              -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "skip"){
 	$("body").html("");
 	var src = window.location.href.split("#");
 	src.shift();
 	$("body").append($("<iframe>", {class:"hiddenFrame", src:src.join("#")}));
 
-//------------------------------------------------------------------           PART V              -------------------------------------------------------------------------------------*/
+//------------------------------------------------------------------          PART VI              -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "external"){ //called by GetVid as a result of an iframe
 	var link = window.location.href;
 	if (link.split('#').length > 1 && link.split("downloadTo").length > 1){
 		var settings = JSON.parse(link.split("#")[1].replace(/%0D/g, "")) //settings is an object including title, remain, link, host, downloadTo
 		settings.title = settings.title.replace(/\%22/g,'"');
 		$('body').remove(); //Stop video
-		SaveToDisk(link, settings); //Save
+		//SaveToDisk(link, settings); //Save
 	}
 }
 
@@ -205,6 +207,10 @@ $(window).on(messageEvent, function(e){
 	var e = e.originalEvent;
 	if (e.origin){
 		if (e.origin.split(window.location.host).length > 1){ //A message from the proxy iframe
+			if (e.data.class === 'captcha'){
+				$(".captcha").remove();
+				return;
+			}
 			$("#"+e.data.iframeId).remove();
 			if (global_settings.downloadTo === 'jDownload'){
 				$.post("http://127.0.0.1:9666/flashgot", {
@@ -223,8 +229,6 @@ $(window).on(messageEvent, function(e){
 		} else if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
 			if (!e.data.host) return;
 			window.parent.postMessage(e.data, e.data.host);	
-		} else if (e.origin.split(window.location.host).length > 1){ //Closes captcha
-			$('.'+e.data.class).remove();
 		}
 	}
 }); 
@@ -325,7 +329,7 @@ function MakeButton(params){ //Makes the download button, params include buttonI
 					startIndex = parseInt($("#multSelect").val(), 10) - 1;   
 				}
 				for (i = startIndex; i<startIndex+count; i++) indexes.push(i);
-					remain[params.buttonId] = indexes.length;
+				remain[params.buttonId] = indexes.length;
 				if (global_settings.count) $("#"+params.buttonId).attr("value", remain[params.buttonId]+" remaining");
 
 				//If the information for the first download is on the page....
@@ -885,6 +889,7 @@ function ResumeProcesses(){
 
 function WhatPage(){
 	if (window.location.href.indexOf("Special/AreYouHuman") > -1) return "captcha";
+	if (window.location.href.indexOf("Special/hi") > -1) return "captcha2";
 	if (window.location.href.indexOf("google") > -1) return "external";
 
 	var page = (window.location.href.toLowerCase().contains(["anime","cartoon","drama"]));
