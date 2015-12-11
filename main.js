@@ -161,8 +161,8 @@ if (currentWindow === "episode"){
 	window.parent.postMessage({origin:host, class:'captcha'}, host);
 
 //------------------------------------------------------------------          PART V              -------------------------------------------------------------------------------------*/
-} else if (currentWindow === "skip"){
-	$("body").remove();
+} else if (currentWindow === "skip"){ //NEED TO PASS GLOBAL_SETTINGS
+	$("#centerDivVideo").remove();
 	window.passed = JSON.parse(window.location.href.split("#")[1]);
 	window.global_settings = passed.global_settings;
 	window.indexes = passed.indexes;
@@ -244,8 +244,7 @@ $(window).on(messageEvent, function(e){
 			if (window.remain[e.data.buttonId] === 0){
 				window.top.$("#"+e.data.buttonId).attr("value", window.top.$("#"+e.data.buttonId).attr("defaultValue"));
 				window.onbeforeunload = null; //Remove leave confirmation
-				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
-				window.top.$("#dlReq_"+e.data.buttonId).remove();
+				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true), window.top.$("#dlReq_"+e.data.buttonId).remove();}, 500); //Reset the button
 			}
 		}
 	}
