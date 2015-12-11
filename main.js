@@ -30,7 +30,7 @@ This script contains four parts
  5. Proxy frame which provides the video handler frame
  6. The downloading video handler << This is the google docs sites
  */
- 
+
 //Misc functions
 String.prototype.contains = function(search){
 	var str = this;
@@ -243,7 +243,7 @@ $(window).on(messageEvent, function(e){
 			if (window.global_settings.count) window.top.$("#"+e.data.buttonId).attr("value", window.remain[e.data.buttonId]+" remaining");
 			if (window.remain[e.data.buttonId] === 0){
 				window.top.$("#"+e.data.buttonId).attr("value", window.top.$("#"+e.data.buttonId).attr("defaultValue"));
-				window.onbeforeunload = null; //Remove leave confirmation
+				window.top.onbeforeunload = null; //Remove leave confirmation
 				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true), window.top.$("#dlReq_"+e.data.buttonId).remove();}, 500); //Reset the button
 			}
 		}
