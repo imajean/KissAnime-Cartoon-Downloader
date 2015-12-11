@@ -26,8 +26,9 @@ This script contains four parts
  1. The download bar handler
  2. The series page handler
  3. Handles iframe captcha
- 4. Proxy frame which provides the video handler frame
- 5. The downloading video handler << This is the google docs sites
+ 4. Handles iframe captcha redirect
+ 5. Proxy frame which provides the video handler frame
+ 6. The downloading video handler << This is the google docs sites
  */
 
 //Misc functions
@@ -82,7 +83,7 @@ var default_setings = {
 	'maxQuality':false,
 	'fade':false,
 	'errTimeout':5,
-	'waitTime':0,
+	'waitTime':2,
 	'debug':true
 };
 SetupGlobalSettings(); //Ensures that all global_settings are set... if not, refer to default_settings
@@ -173,7 +174,7 @@ if (currentWindow === "episode"){
 		var settings = JSON.parse(link.split("#")[1].replace(/%0D/g, "")) //settings is an object including title, remain, link, host, downloadTo
 		settings.title = settings.title.replace(/\%22/g,'"');
 		$('body').remove(); //Stop video
-		//SaveToDisk(link, settings); //Save
+		SaveToDisk(link, settings); //Save
 	}
 }
 
@@ -890,11 +891,15 @@ function ResumeProcesses(){
 function WhatPage(){
 	if (window.location.href.indexOf("Special/AreYouHuman") > -1) return "captcha";
 	if (window.location.href.indexOf("Special/hi") > -1) return "captcha2";
-	if (window.location.href.indexOf("google") > -1) return "external";
 
-	var page = (window.location.href.toLowerCase().contains(["anime","cartoon","drama"]));
+	var page = (window.location.href.toLowerCase().contains(["kissanime","cartoon","drama"]));
 	var hash = window.location.href.contains("#");
 	var ep = ($("#centerDivVideo").length > 0);
+
+	if (window.location.href.indexOf("google") > -1){
+		if (!page) return 'nothing';
+		return "external";
+	} 
 
 	if (ep && page && hash) return "skip";
 	if (ep && page) return "episode";
