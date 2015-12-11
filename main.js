@@ -30,7 +30,7 @@ This script contains four parts
  5. Proxy frame which provides the video handler frame
  6. The downloading video handler << This is the google docs sites
  */
-
+ 
 //Misc functions
 String.prototype.contains = function(search){
 	var str = this;
@@ -162,10 +162,27 @@ if (currentWindow === "episode"){
 
 //------------------------------------------------------------------          PART V              -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "skip"){
-	$("body").html("");
-	var src = window.location.href.split("#");
-	src.shift();
-	$("body").append($("<iframe>", {class:"hiddenFrame", src:src.join("#")}));
+	$("body").remove();
+	window.passed = JSON.parse(window.location.href.split("#")[1]);
+	window.global_settings = passed.global_settings;
+	window.indexes = passed.indexes;
+	window.remain = passed.remain;
+	window.eps = parent.window.eps;
+	buttonId = passed.buttonId;
+
+	for (var key in remain){
+		if (remain.hasOwnProperty(key)) {
+			window.remain[key] = parseInt(window.remain[key]);
+		}
+	}
+	for (i = 0; i<window.indexes.length; i++){
+		window.indexes[i] = parseInt(window.indexes[i]);
+	}
+
+	new timeout({range:[0, window.indexes.length], time:window.global_settings.waitTime, callback:function(i){ //execute a for loop for range, execute every certain amount of seconds
+		CreateAnother(window.indexes[i], buttonId, buttonId+"_"+i);
+		if (i === this.range[1]-1) this.kill(true);
+	}});
 
 //------------------------------------------------------------------          PART VI              -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "external"){ //called by GetVid as a result of an iframe
@@ -212,6 +229,9 @@ $(window).on(messageEvent, function(e){
 				$(".captcha").remove();
 				return;
 			}
+			
+		} else if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
+			if (!e.data.host) return;
 			$("#"+e.data.iframeId).remove();
 			if (global_settings.downloadTo === 'jDownload'){
 				$.post("http://127.0.0.1:9666/flashgot", {
@@ -219,17 +239,14 @@ $(window).on(messageEvent, function(e){
 					urls:e.data.url
 				});
 			} 
-
-			remain[e.data.buttonId]--;
-			if (global_settings.count) $("#"+e.data.buttonId).attr("value", remain[e.data.buttonId]+" remaining");
-			if (remain[e.data.buttonId] === 0){
-				$("#"+e.data.buttonId).attr("value", $("#"+e.data.buttonId).attr("defaultValue"));
+			window.remain[e.data.buttonId]--;
+			if (window.global_settings.count) window.top.$("#"+e.data.buttonId).attr("value", window.remain[e.data.buttonId]+" remaining");
+			if (window.remain[e.data.buttonId] === 0){
+				window.top.$("#"+e.data.buttonId).attr("value", window.top.$("#"+e.data.buttonId).attr("defaultValue"));
 				window.onbeforeunload = null; //Remove leave confirmation
 				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true)}, 500); //Reset the button
+				window.top.$("#dlReq_"+e.data.buttonId).remove();
 			}
-		} else if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
-			if (!e.data.host) return;
-			window.parent.postMessage(e.data, e.data.host);	
 		}
 	}
 }); 
@@ -598,15 +615,19 @@ function DownloadCurrent(quality, buttonId){
 	} else {
 		GetFromPage(document.documentElement.innerHTML, buttonId, '0');
 	}
-	
 }
 
 function DownloadVideos(indexes, buttonId){ //Where indexes refer to the indexes of the videos
 	indexes.sort(sortNumber);
-	new timeout({range:[0, indexes.length], time:global_settings.waitTime, callback:function(i){ //execute a for loop for range, execute every certain amount of seconds
-		CreateAnother(indexes[i], buttonId, buttonId+"_"+i);
-		if (i === this.range[1]-1) this.kill(true);
-	}});
+	window.eps = eps;
+	passObject = {"indexes":indexes, "buttonId":buttonId, "global_settings":global_settings, "remain":remain}
+	var $iframe = $("<iframe>", { //Send video to other script to be downloaded.
+		src: eps[0] + "#" + JSON.stringify(passObject),
+		id: 'dlReq_'+buttonId,
+		class: 'extVid hiddenFrame'
+	});
+	$iframe.attr("realSrc", $iframe.attr("src"));
+	$("body").append($iframe);
 }
 
 function sortNumber(a,b) {
@@ -615,7 +636,7 @@ function sortNumber(a,b) {
 
 function CreateAnother(index, buttonId, iframeId){
 	Interval.prototype.getCheck = function(){
-		if (remain[this.buttonId] !== this.lastRemain){
+		if (window.remain[this.buttonId] !== this.lastRemain){
 			this.lastRemain = remain[this.buttonId];
 			return;
 		}
@@ -633,8 +654,7 @@ function CreateAnother(index, buttonId, iframeId){
 		this.interval = setInterval(function(){ _this.getCheck()}, global_settings.errTimeout*1000);
 		this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)}); 
 	}
-
-	var newUrl = eps[index];
+	var newUrl = window.eps[index];
 	new Interval({'lastRemain':remain.buttonId, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId, 'index':index, 'make':'makeGetInterval'});
 }
 
@@ -678,14 +698,15 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 	}
 	var host = GetHost();
 	var settings = {"title":encodeURIComponent(title), "host":host, "downloadTo":global_settings.downloadTo, "buttonId":buttonId, "iframeId":iframeId};
-	var $iframe = $("<iframe>", { //Send video to other script to be downloaded.
-		src: eps[0] + "#" + link + "#" + JSON.stringify(settings),
+	
+	var $iframe = $("<iframe>", {
+		src: link + "#" + JSON.stringify(settings),
 		id: iframeId,
 		class: 'extVid hiddenFrame'
 	});
 	$iframe.attr("realSrc", $iframe.attr("src"));
 	$("body").append($iframe);
-	
+
 	Interval.prototype.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
 		this.ChangeSrc = function(){
 			$("#"+this.id).attr("src", "google.com");
@@ -734,14 +755,14 @@ Interval.prototype.resume = function(){
 function ButtonState(id, enable){
 	if (enable !== 'undefined'){    
 		if (enable){
-			$("#"+id).removeClass("disabled");
-			$("#"+id).removeAttr("disabled");
+			window.top.$("#"+id).removeClass("disabled");
+			window.top.$("#"+id).removeAttr("disabled");
 		} else if (enable === false) {
-			$("#"+id).addClass("disabled"); 
-			$("#"+id).attr("disabled", ""); //This removes the blue highlighting
+			window.top.$("#"+id).addClass("disabled"); 
+			window.top.$("#"+id).attr("disabled", ""); //This removes the blue highlighting
 		}
 	} else if (id){
-		return !($("#"+id).hasClass("disabled"));
+		return !(window.top.$("#"+id).hasClass("disabled"));
 	}
 }
 
@@ -789,7 +810,7 @@ function Lightbox(id, $container, params){
 	if (params.contCss) $content.css(params.contCss);
 	if (params.selectable) $content.removeClass("unselectable");
 	if ($("#"+id+"_content").length === 0) {
-		$("body").append($box).append($wrap);
+		$(window.top.$("body")).append($box).append($wrap);
 	} else {
 		$("#"+id+"_content .settingsWindow").html($("#"+id+"_content .settingsWindow").html()+$container.html());
 	}
