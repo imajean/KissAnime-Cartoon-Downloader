@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.49
+// @version      0.50
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -83,7 +83,7 @@ var default_setings = {
 	'maxQuality':false,
 	'fade':false,
 	'errTimeout':5,
-	'waitTime':2,
+	'waitTime':3,
 	'debug':true
 };
 SetupGlobalSettings(); //Ensures that all global_settings are set... if not, refer to default_settings
@@ -232,7 +232,8 @@ $(window).on(messageEvent, function(e){
 			
 		} else if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
 			if (!e.data.host) return;
-			$("#"+e.data.iframeId).remove();
+			$("#"+e.data.iframeId).attr("dead", true);
+			setTimeout(function(){ $("#"+e.data.iframeId).remove();}, 1000, e);
 			if (global_settings.downloadTo === 'jDownload'){
 				$.post("http://127.0.0.1:9666/flashgot", {
 					fnames:e.data.title+".mp4",
@@ -609,8 +610,8 @@ function MakeCheckboxes(){
 function DownloadCurrent(quality, buttonId){
 	if (!buttonId){
 		var url = asp.wrap($("#selectQuality option:contains('"+quality.toString()+"')").attr("value"));
-		var titleText = $("title").text();
-		GetExtVid(url, titleText, buttonId);
+		var titleText = ProcessTitle($("title").text());
+		GetVid(url, titleText, buttonId, buttonId+"_local");
 	} else {
 		GetFromPage(document.documentElement.innerHTML, buttonId, '0');
 	}
@@ -668,14 +669,13 @@ function GetFromPage(xhr, buttonId, iframeId, interval, index){
 	}
 	indexes.splice(index, 1);
 	var url = asp.wrap(text);
-	var titleText = xhr.split("<title>")[1].split("</title>")[0];
+	var titleText = ProcessTitle(xhr.split("<title>")[1].split("</title>")[0]);
 	if (interval) interval.kill(true);
-	GetExtVid(url, titleText, buttonId, iframeId);
+	GetVid(url, titleText, buttonId, iframeId);
 }
 
-function GetExtVid(url, titleText, buttonId, iframeId){ //Get the link for a new video
-	var title = (titleText.split("- Watch")[0].replace(/\n/g, " ")).trim().singleSpace();
-	GetVid(url, title, buttonId, iframeId);
+function ProcessTitle(titleText){
+	return (titleText.split("- Watch")[0].replace(/\n/g, " ")).trim().singleSpace();
 }
 
 function GetHost(){
@@ -712,7 +712,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 			var _this = this;
 			setTimeout(function(){ $('#'+_this.id).attr("src", $('#'+_this.id).attr("realSrc"))}, 1500);
 		}
-		var exist = ($("#"+this.id).length > 0);
+		var exist = ($("#"+this.id).length > 0 && $("#"+this.id).attr("dead") !== "true"); //If it exists and requires checking
 		if (this.exec > 4 && global_settings.debug && exist){
 			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", ResumeProcesses, this);
 		} else if (this.exec <= 4){
@@ -744,7 +744,6 @@ Interval.prototype.kill = function(remove){
 	clearInterval(this.interval);
 	this.active = false;
 	if (remove) processes.splice(processes.indexOf(this), 1);
-	if ($("#"+this.id).attr("src")) $("#"+this.id).attr("src", "www.google.com")
 }
 Interval.prototype.resume = function(){
 	this.exec = 0;
