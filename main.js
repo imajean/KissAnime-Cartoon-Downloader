@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.50
+// @version      0.51
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -72,6 +72,7 @@ var remain = {};  //How many downloads remain...
 var eps = [];  //An array of the episode data
 var indexes = []; //An array containing the indexes of the episodes to be downloaded
 var processes = []; //An array containing all the processes being run
+var jDownloadLinks = []; //An array for holding the links in jDownloader compatibilty mode
 var bar;
 var global_settings = localStorage.getObject('global_settings') || {};
 var default_setings = {
@@ -84,7 +85,8 @@ var default_setings = {
 	'fade':false,
 	'errTimeout':5,
 	'waitTime':3,
-	'debug':true
+	'debug':true,
+	'jDownloadCompat':false
 };
 SetupGlobalSettings(); //Ensures that all global_settings are set... if not, refer to default_settings
 
@@ -229,27 +231,55 @@ $(window).on(messageEvent, function(e){
 				$(".captcha").remove();
 				return;
 			}
-			
 		} else if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
 			if (!e.data.host) return;
 			$("#"+e.data.iframeId).attr("dead", true);
 			setTimeout(function(){ $("#"+e.data.iframeId).remove();}, 1000, e);
 			if (global_settings.downloadTo === 'jDownload'){
-				$.post("http://127.0.0.1:9666/flashgot", {
-					fnames:e.data.title+".mp4",
-					urls:e.data.url
-				});
-			} 
+				if (global_settings.jDownloadCompat){
+					if (!jDownloadLinks[e.data.buttonId]) jDownloadLinks[e.data.buttonId] = [];
+					jDownloadLinks[e.data.buttonId].push({num:e.data.iframeId, url:e.data.url});
+				} else {
+					$.post("http://127.0.0.1:9666/flashgot", {
+						fnames:e.data.title+".mp4",
+						urls:e.data.url
+					});
+				}
+			}
+
+			if (!window.remain) window.remain = remain;
+			if (!window.global_settings) window.global_settings = global_settings;
+
 			window.remain[e.data.buttonId]--;
 			if (window.global_settings.count) window.top.$("#"+e.data.buttonId).attr("value", window.remain[e.data.buttonId]+" remaining");
 			if (window.remain[e.data.buttonId] === 0){
 				window.top.$("#"+e.data.buttonId).attr("value", window.top.$("#"+e.data.buttonId).attr("defaultValue"));
 				window.top.onbeforeunload = null; //Remove leave confirmation
 				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true), window.top.$("#dlReq_"+e.data.buttonId).remove();}, 500); //Reset the button
+				if (window.global_settings.downloadTo === 'jDownload' && window.global_settings.jDownloadCompat){
+					jDownloadLinks[e.data.buttonId].sort(SortJDownload);
+					window.top.$("#jDownloader").remove();
+					var urls = [];
+					for (i = 0; i<jDownloadLinks[e.data.buttonId].length; i++){
+						urls.push(jDownloadLinks[e.data.buttonId][i]['url']);
+					}
+					$jDownload = $("<textarea>", {
+						id:"jDownloader",
+						style:"display:block;margin:1em auto;white-space:nowrap;overflow:auto;width:90%;padding:1em;height:5em",
+						text:urls.join("\n")
+					});
+					(window.top.$(".listing").length > 0) ? window.top.$("table.listing").before($jDownload) : window.top.$("#divContentVideo").after($jDownload);
+					window.top.$("#jDownloader").select();
+				}
 			}
 		}
 	}
-}); 
+});
+function SortJDownload(a, b){
+	var num1 = a.num.split("_")[a.num.split("_").length - 1];
+	var num2 = b.num.split("_")[b.num.split("_").length - 1]
+	return (Number(num1) - Number(num2));
+}
 
 
 //------------------------------------------------------------------         CONSTRUCTION          -------------------------------------------------------------------------------------*/
@@ -284,7 +314,7 @@ function MakeBar(page){
 
 function MakeQuality(){ //Makes the quality switch
 	if ($('#selectQuality').length > 0){
-		$("#selectQuality").parent().css("display", "inline-block");
+		$("#selectQuality").parent().css({"display":"inline-block","float":"initial"});
 		QualityChange();
 	} else {
 		if (typeof setCookie == 'function') setCookie("usingFlashV1", false); //Fixes JWPlayer bug
@@ -406,26 +436,29 @@ function MakeSettings(){
 	var $container = $("<div>", {class:"settingsWindow"}).append("<p>Below are some settings that can be used to configure the script. The settings for the script update as soon as a value is changed automatically, and this change carries across browser windows without the need to restart. Further help can be found at <a href='https://greasyfork.org/en/scripts/10305-kissanime-cartoon-downloader'>Greasyfork</a> or <a href='https://github.com/Domination9987/KissAnime-Cartoon-Downloader'>GitHub</a>.</p>");
 
 	$container.append("<h2>Filename parameters</h2>");
-	$container = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags', {'appendTo':$container});
+	$container = MakeCheck('remSubDub', 'Use this checkbox to rename the files with or without the (dub) and (sub) tags', 'Remove Dub/Sub tags', {appendTo:$container});
 
 	$container.append("<h2>Downloading parameters</h2>");
-	$container = MakeCheck('count', 'Use this checkbox to toggle the counting down functionality', 'Enable Countdown', {'appendTo':$container});
-	$container = MakeCheck('maxQuality', 'Use this checkbox to force the maximum quality to be downloaded', 'Force Max Quality', {'appendTo':$container, 'help':'This option <b>overrides</b> the manual quality setting'});
+	$container = MakeCheck('count', 'Use this checkbox to toggle the counting down functionality', 'Enable Countdown', {appendTo:$container});
+	$container = MakeCheck('maxQuality', 'Use this checkbox to force the maximum quality to be downloaded', 'Force Max Quality', {appendTo:$container, help:'This option <b>overrides</b> the manual quality setting'});
 
 	$container = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
 		browser:{text:'Download with Browser', info:'Use the browser to download your files'}, 
 		idm:{text:'Download with IDM', info:'Use Internet Download Manager to download your files', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
-		jDownload:{text:'Download with JDownloader', info:'Send links directly to JDownloader 2', help:'This is done using JDownloader\'s flashgot interface, which allows for the URL and the title to be sent directly to JDownloader.'}}, {appendTo:$container});
+		jDownload:{text:'Download with JDownloader', info:'Send links directly to JDownloader 2', help:'This is done using JDownloader\'s flashgot interface, which allows for the URL and the title to be sent directly to JDownloader.'}
+	}, {appendTo:$container});
 
 	$container.append("<h2>Select settings</h2>");
 	$container = MakeRadio('select', 'Choose your selection method:', {
 		drag:{text:'Drag Select', info:'Toggle the selection of episodes by dragging over them', help:'This does not work when the mouse is moving quickly'}, 
-		shift:{text:'Shift Select', info:'Use shift key to assist in selecting episodes', help:'Allows the use of shift key to select the range of videos from the selection screen'}}, {appendTo:$container});
+		shift:{text:'Shift Select', info:'Use shift key to assist in selecting episodes', help:'Allows the use of shift key to select the range of videos from the selection screen'}
+	}, {appendTo:$container});
 
 	$container.append("<h2>Miscellaneous</h2>");
-	$container = MakeCheck('fade', 'Toggle the fading animations of the lightboxes', 'Enable Fading Animation', {'appendTo':$container});
+	$container = MakeCheck('fade', 'Toggle the fading animations of the lightboxes', 'Enable Fading Animation', {appendTo:$container});
 
 	$container.append("<h2>Advanced Settings</h2>");
+	$container = MakeCheck('jDownloadCompat', 'Use the compatibility mode for the JDownloader method', 'Use JDownloader Compatibility Mode', {appendTo:$container, help:'This uses the old method of having a textbox with links that can be directly copied to JDownloader'});
 	$container = MakeCheck('debug', 'Use this checkbox to toggle error checking', 'Enable Error Checking', {'appendTo':$container, 'help':'Disabling this option is <b>NOT</b> recommended <b>AT ALL</b>'});
 	$container = MakeRange('errTimeout', {appendTo:$container, label:'Error Timeout:', range:[2, 8], step:0.1, round:1, help:'Use this slider to change the timeout for error checking. If you had an (iframeCheck) error you should increase this value'});
 	$container = MakeRange('waitTime', {appendTo:$container, label:'Download Delay:', range:[0, 5], step:0.1, round:1, help:'Use this slider to change the delay period between download requests. Increasing this value increases the chance of downloading videos in order for Browser and IDM integrations, at the compromise of slowing the overall download process'});
