@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.51
+// @version      0.52
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -30,7 +30,7 @@ This script contains four parts
  5. Proxy frame which provides the video handler frame
  6. The downloading video handler << This is the google docs sites
  */
-
+ 
 //Misc functions
 String.prototype.contains = function(search){
 	var str = this;
@@ -165,13 +165,12 @@ if (currentWindow === "episode"){
 //------------------------------------------------------------------          PART V              -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "skip"){ //NEED TO PASS GLOBAL_SETTINGS
 	$("#centerDivVideo").remove();
-	window.passed = JSON.parse(window.location.href.split("#")[1]);
+	window.passed = JSON.parse(decodeURI(window.location.href.split("#")[1]));
 	window.global_settings = passed.global_settings;
-	window.indexes = passed.indexes;
-	window.remain = passed.remain;
+	window.indexes = window.passed.indexes;
+	window.remain = window.passed.remain;
 	window.eps = parent.window.eps;
 	buttonId = passed.buttonId;
-
 	for (var key in remain){
 		if (remain.hasOwnProperty(key)) {
 			window.remain[key] = parseInt(window.remain[key]);
@@ -190,7 +189,7 @@ if (currentWindow === "episode"){
 } else if (currentWindow === "external"){ //called by GetVid as a result of an iframe
 	var link = window.location.href;
 	if (link.split('#').length > 1 && link.split("downloadTo").length > 1){
-		var settings = JSON.parse(link.split("#")[1].replace(/%0D/g, "")) //settings is an object including title, remain, link, host, downloadTo
+		var settings = JSON.parse(decodeURI(link.split("#")[1].replace(/%0D/g, ""))); //settings is an object including title, remain, link, host, downloadTo
 		settings.title = settings.title.replace(/\%22/g,'"');
 		$('body').remove(); //Stop video
 		SaveToDisk(link, settings); //Save
