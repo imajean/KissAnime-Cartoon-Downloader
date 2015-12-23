@@ -30,7 +30,7 @@ This script contains four parts
  5. Proxy frame which provides the video handler frame
  6. The downloading video handler << This is the google docs sites
  */
- 
+
 //Misc functions
 String.prototype.contains = function(search){
 	var str = this;
@@ -61,7 +61,8 @@ Storage.prototype.setObject = function(key, value){ //Set JSON localstorage
 
 Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
 	var value = this.getItem(key);
-	return value && JSON.parse(value);
+	if (value === "undefined" || !value) return null;
+	return value && JSON.parse(decodeURI(value));
 };
 //Global
 var errors = 0;
