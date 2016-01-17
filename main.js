@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.52
+// @version      0.53
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -27,9 +27,100 @@ This script contains four parts
  2. The series page handler
  3. Handles iframe captcha
  4. Handles iframe captcha redirect
- 5. Proxy frame which provides the video handler frame
+ 5. Proxy frame (always episode 0) which provides the video handler frame/s
  6. The downloading video handler << This is the google docs sites
  */
+
+//Classes
+
+//A function that extends classes, usage:
+//object.prototype = Extend(object, base, extend);
+
+function Extend(object, base, extend){
+	var extend = extend || {};
+	object.prototype = Object.create(base.prototype);
+    for (var i in extend){
+		if (extend.hasOwnProperty(i)){
+			object.prototype[i] = extend[i];
+		}
+    }
+    object.prototype.constructor = object;
+    return object.prototype;
+}
+
+function Interval(params){
+	this.params = params || {};
+	this.exec = 0;
+	for (var key in this.params){
+		if (this.params.hasOwnProperty(key)){
+			this[key] = this.params[key];
+		}
+	}
+	processes.push(this);
+}
+Interval.prototype = {
+	kill: function(remove){
+		clearInterval(this.interval);
+		this.active = false;
+		if (remove) processes.splice(processes.indexOf(this), 1);
+	},
+	resume: function(){
+		this.exec = 0;
+		this.make();
+	}
+}
+
+function GetInterval(params){
+	Interval.call(this, params);
+	this.make();
+}
+GetInterval.prototype = Extend(GetInterval, Interval, {
+	getCheck: function(){
+		if (window.remain[this.buttonId] !== this.lastRemain){
+			this.lastRemain = remain[this.buttonId];
+			return;
+		}
+		this.req.abort();
+		this.exec += 1;
+		if (this.exec > 3 && global_settings.debug){
+			Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test and try again."+$captcha[0].outerHTML, ResumeProcesses, this);
+		} else {
+			var _this = this;
+			this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)});
+		}
+	},
+	make: function(){
+		var _this = this;
+		this.interval = setInterval(function(){ _this.getCheck()}, global_settings.errTimeout*1000);
+		this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)}); 
+	}
+});
+
+function iFrameInterval(params){
+	Interval.call(this, params);
+	this.make();
+}
+iFrameInterval.prototype = Extend(iFrameInterval, Interval, {
+	make: function(){
+		$("#"+this.id).attr("src", $("#"+this.id).attr("realSrc"));
+		var _this = this;
+		this.interval = setInterval(function(){ _this.iframeCheck()}, global_settings.errTimeout*1000);
+	},
+	changeSrc: function(){
+		$("#"+this.id).attr("src", "google.com");
+		var _this = this;
+		setTimeout(function(){ $('#'+_this.id).attr("src", $('#'+_this.id).attr("realSrc"))}, 1500);
+	},
+	iframeCheck: function(){
+		var exist = ($("#"+this.id).length > 0 && $("#"+this.id).attr("dead") !== "true"); //If it exists and requires checking
+		if (this.exec > 4 && global_settings.debug && exist){
+			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", ResumeProcesses, this);
+		} else if (this.exec <= 4){
+			(exist) ? this.ChangeSrc() : this.kill(true);
+		}
+		this.exec += 1;
+	}
+});
 
 //Misc functions
 String.prototype.contains = function(search){
@@ -668,27 +759,8 @@ function sortNumber(a,b) {
 }
 
 function CreateAnother(index, buttonId, iframeId){
-	Interval.prototype.getCheck = function(){
-		if (window.remain[this.buttonId] !== this.lastRemain){
-			this.lastRemain = remain[this.buttonId];
-			return;
-		}
-		this.req.abort();
-		this.exec += 1;
-		if (this.exec > 3 && global_settings.debug){
-			Error("(getCheck): Something went wrong with: "+this.iframeId+". This commonly occurs due to the captcha restraint. Fill in the 'Are you human' test and try again."+$captcha[0].outerHTML, ResumeProcesses, this);
-		} else {
-			var _this = this;
-			this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)});
-		}
-	}
-	Interval.prototype.makeGetInterval = function(){
-		var _this = this;
-		this.interval = setInterval(function(){ _this.getCheck()}, global_settings.errTimeout*1000);
-		this.req = $.get(this.newUrl, function(xhr){GetFromPage(xhr, _this.buttonId, _this.iframeId, _this, _this.index)}); 
-	}
 	var newUrl = window.eps[index];
-	new Interval({'lastRemain':remain.buttonId, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId, 'index':index, 'make':'makeGetInterval'});
+	new GetInterval({'lastRemain':remain.buttonId, 'newUrl':newUrl, 'buttonId':buttonId, 'iframeId':iframeId, 'index':index});
 }
 
 function GetFromPage(xhr, buttonId, iframeId, interval, index){
@@ -739,48 +811,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 	$iframe.attr("realSrc", $iframe.attr("src"));
 	$("body").append($iframe);
 
-	Interval.prototype.iframeCheck = function(){ //this.id should refer to the id of the iframe (iframeId)
-		this.ChangeSrc = function(){
-			$("#"+this.id).attr("src", "google.com");
-			var _this = this;
-			setTimeout(function(){ $('#'+_this.id).attr("src", $('#'+_this.id).attr("realSrc"))}, 1500);
-		}
-		var exist = ($("#"+this.id).length > 0 && $("#"+this.id).attr("dead") !== "true"); //If it exists and requires checking
-		if (this.exec > 4 && global_settings.debug && exist){
-			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", ResumeProcesses, this);
-		} else if (this.exec <= 4){
-			(exist) ? this.ChangeSrc() : this.kill(true);
-		}
-		this.exec += 1;
-	}
-	Interval.prototype.makeIframeInterval = function(){
-		$("#"+this.id).attr("src", $("#"+this.id).attr("realSrc"));
-		var _this = this;
-		this.interval = setInterval(function(){ _this.iframeCheck()}, global_settings.errTimeout*1000);
-	}
-
-	new Interval({id:iframeId, title:title, make:'makeIframeInterval'});
-}
-
-function Interval(params){
-	this.params = params || {};
-	this.exec = 0;
-	for (var key in this.params){
-		if (this.params.hasOwnProperty(key)){
-			this[key] = this.params[key];
-		}
-	}
-	processes.push(this);
-	if (this.make) this[this.make]();
-}
-Interval.prototype.kill = function(remove){
-	clearInterval(this.interval);
-	this.active = false;
-	if (remove) processes.splice(processes.indexOf(this), 1);
-}
-Interval.prototype.resume = function(){
-	this.exec = 0;
-	this[this.make]();
+	new iFrameInterval({id:iframeId, title:title});
 }
 
 function ButtonState(id, enable){
