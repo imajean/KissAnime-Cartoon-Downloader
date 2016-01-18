@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.53
+// @version      0.54
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -116,7 +116,7 @@ iFrameInterval.prototype = Extend(iFrameInterval, Interval, {
 		if (this.exec > 4 && global_settings.debug && exist){
 			Error("(iframeCheck): Something went wrong with: \""+this.title+"\". </p><p>It probably isn't redirecting properly. This could be because of slow internet or slow servers. Try increasing the 'Error Timeout' amount in the settings to fix this", ResumeProcesses, this);
 		} else if (this.exec <= 4){
-			(exist) ? this.ChangeSrc() : this.kill(true);
+			(exist) ? this.changeSrc() : this.kill(true);
 		}
 		this.exec += 1;
 	}
@@ -146,15 +146,27 @@ String.prototype.singleSpace = function(){
 	return array.join(" ");
 };
 
+String.prototype.parseable = function(){
+   	var str = this;
+    try {
+        JSON.parse(str);
+    } catch (e){
+        return false;
+    }
+    return true;
+}
+
 Storage.prototype.setObject = function(key, value){ //Set JSON localstorage
 	this.setItem(key, JSON.stringify(value));
 };
 
 Storage.prototype.getObject = function(key){ //Retrieve JSON localstorage
 	var value = this.getItem(key);
-	if (value === "undefined" || !value) return null;
+	if (!value.parseable()) return null;
 	return value && JSON.parse(decodeURI(value));
 };
+
+
 //Global
 var errors = 0;
 var keys = []; //Active keys
@@ -243,7 +255,7 @@ if (currentWindow === "episode"){
 				$("#multAmount").append($("<option>", {value:i+1, html:i+1}));
 			}
 		});
-	}
+	};
 
 //------------------------------------------------------------------          PART III             -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "captcha"){
