@@ -37,7 +37,7 @@ This script contains four parts
 //object.prototype = Extend(object, base, extend);
 
 function Extend(object, base, extend){
-	var extend = extend || {};
+	extend = extend || {};
 	object.prototype = Object.create(base.prototype);
     for (var i in extend){
 		if (extend.hasOwnProperty(i)){
@@ -68,7 +68,7 @@ Interval.prototype = {
 		this.exec = 0;
 		this.make();
 	}
-}
+};
 
 function GetInterval(params){
 	Interval.call(this, params);
@@ -154,7 +154,7 @@ String.prototype.parseable = function(){
         return false;
     }
     return true;
-}
+};
 
 Storage.prototype.setObject = function(key, value){ //Set JSON localstorage
 	this.setItem(key, JSON.stringify(value));
