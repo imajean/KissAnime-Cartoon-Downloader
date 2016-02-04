@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.58
+// @version      0.59
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -295,7 +295,7 @@ if (currentWindow === "episode"){
 } else if (currentWindow === "external"){ //called by GetVid as a result of an iframe
 	var link = window.location.href;
 	if (link.split('#').length > 1 && link.split("downloadTo").length > 1){
-		var settings = JSON.parse(decodeURI(link.split("#")[1].replace(/%0D/g, ""))); //settings is an object including title, remain, link, host, downloadTo
+		var settings = JSON.parse(link.split("#")[1].replace(/%0D/g, "")); //settings is an object including title, remain, link, host, downloadTo
 		settings.title = settings.title.replace(/\%22/g,'"');
 		$('body').remove(); //Stop video
 		SaveToDisk(link, settings); //Save
