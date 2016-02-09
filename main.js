@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.59
+// @version      0.60
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -296,7 +296,7 @@ if (currentWindow === "episode"){
 	var link = window.location.href;
 	if (link.split('#').length > 1 && link.split("downloadTo").length > 1){
 		var settings = JSON.parse(link.split("#")[1].replace(/%0D/g, "")); //settings is an object including title, remain, link, host, downloadTo
-		settings.title = settings.title.replace(/\%22/g,'"');
+		settings.title = decodeURIComponent(settings.title).replace(/:/g, ";"); //replace colons (which appear as - when downloading) with semicolons
 		$('body').remove(); //Stop video
 		SaveToDisk(link, settings); //Save
 	}
@@ -339,7 +339,7 @@ $(window).on(messageEvent, function(e){
 		} else if (e.origin.split('docs.google').length > 1 || e.origin.split("googlevideo").length > 1){
 			if (!e.data.host) return;
 			$("#"+e.data.iframeId).attr("dead", true);
-			setTimeout(function(){ $("#"+e.data.iframeId).remove();}, 1000, e);
+			setTimeout(function(){ $("#"+e.data.iframeId).remove();}, 3000, e);
 			if (global_settings.downloadTo === 'jDownload'){
 				if (global_settings.jDownloadCompat){
 					if (!jDownloadLinks[e.data.buttonId]) jDownloadLinks[e.data.buttonId] = [];
@@ -360,7 +360,7 @@ $(window).on(messageEvent, function(e){
 			if (window.remain[e.data.buttonId] === 0){
 				window.top.$("#"+e.data.buttonId).attr("value", window.top.$("#"+e.data.buttonId).attr("defaultValue"));
 				window.top.onbeforeunload = null; //Remove leave confirmation
-				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true), window.top.$("#dlReq_"+e.data.buttonId).remove();}, 500); //Reset the button
+				setTimeout(function(){ButtonState(e.data.buttonId, true), ButtonState("settingsBtn", true), window.top.$("#dlReq_"+e.data.buttonId).remove();}, 3000); //Reset the button
 				if (window.global_settings.downloadTo === 'jDownload' && window.global_settings.jDownloadCompat){
 					jDownloadLinks[e.data.buttonId].sort(SortJDownload);
 					window.top.$("#jDownloader").remove();
