@@ -77,12 +77,11 @@ The options of the script can be configured using the settings menu. From this m
 + The "Download Delay" slider can be used to change the time between each video request. By increasing this value, the speed of adding all videos decreases, but the chance of having ordered downloads is increased. 
 
 Errors
-====
+----
 It is important to note that upon **closing any Error window** the script will **continually retry**. There are a few errors that can occur for certain reasons. The current known errors are:
 + (iframeCheck): This is an error that indicates that the source of the video is not correctly redirecting. This could be the cause of a broken link supplied by the site host, or it could be the result of slow connection to the server. A fix for this is to increase the "Error Timeout" range slider in settings.
 + (getCheck): This is an error that indicates that the script cannot receive pages from the server. This is an issue as the download links are provided from the episode pages which are obtained through a GET request (which has failed). The solution to this problem (99% of the time) is to fill out the reCAPTCHA provided in the error window.
 
 Acknowledgements
-=======
-
+----
 Thanks to Mauz Khan for his [excellent blog](http://muaz-khan.blogspot.com.au/2012/10/save-files-on-disk-using-javascript-or.html) on how to save files to disk using javascript
