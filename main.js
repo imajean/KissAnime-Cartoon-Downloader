@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.60
+// @version      0.61
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -295,7 +295,7 @@ if (currentWindow === "episode"){
 } else if (currentWindow === "external"){ //called by GetVid as a result of an iframe
 	var link = window.location.href;
 	if (link.split('#').length > 1 && link.split("downloadTo").length > 1){
-		var settings = JSON.parse(link.split("#")[1].replace(/%0D/g, "")); //settings is an object including title, remain, link, host, downloadTo
+		var settings = JSON.parse(decodeURIComponent(link.split("#")[1].replace(/%0D/g, ""))); //settings is an object including title, remain, link, host, downloadTo
 		settings.title = decodeURIComponent(settings.title).replace(/:/g, ";"); //replace colons (which appear as - when downloading) with semicolons
 		$('body').remove(); //Stop video
 		SaveToDisk(link, settings); //Save
@@ -304,7 +304,7 @@ if (currentWindow === "episode"){
 
 function SaveToDisk(link, settings){
 	var save = document.createElement('a');
-	save.href = link.split("#")[0]+"&title="+settings.title;
+	save.href = link.split("#")[0]+"&title="+encodeURIComponent(settings.title)+"#"+link.split("#")[1];
 	save.target = '_blank';
 	save.download = settings.title || 'unknown';
 	if (settings.downloadTo === "browser"){ //Will attempt to download through browser
