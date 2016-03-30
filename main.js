@@ -304,6 +304,10 @@ if (currentWindow === "episode"){
 
 function SaveToDisk(link, settings){
 	var save = document.createElement('a');
+
+	//Remove HTML entities from the title
+	settings.title = $('<textarea />').html(settings.title).text();
+
 	save.href = link.split("#")[0]+"&title="+encodeURIComponent(settings.title)+"#"+link.split("#")[1];
 	save.target = '_blank';
 	save.download = settings.title || 'unknown';
@@ -534,7 +538,7 @@ function MakeMultiple(id, params){ //Makes the multiple dropdown boxes
 	
 	if (params.appendTo) return params.appendTo.append(multiple);
 	if (params.prependTo) return params.prependTo.prepend(multiple)
-		return multiple;
+	return multiple;
 }
 
 function MakeSettings(){
