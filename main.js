@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         KissAnime/Cartoon Downloader
 // @namespace    https://greasyfork.org/users/10036
-// @version      0.61
+// @version      0.62
 // @description  Download videos from the sites KissAnime.com, KissAsian.com and KissCartoon.com
 // @author       D. Slee
 // @icon         http://kissanime.to/Content/images/favicon.ico
@@ -215,6 +215,17 @@ MakeCss(css);
 linkSplit = window.location.href.split('.');
 var $captcha = $("<iframe>", {style:"border:0;width:100%;overflow:hidden;height:200px", seamless:true, src:linkSplit[0]+"."+linkSplit[1].split("/")[0]+'/Special/AreYouHuman?reUrl=hi', class:'captcha'});
 
+function GetDecryption(){
+	var decryption = (window.location.href.contains("kissanime")) ? "asp" : "kissenc";
+	$kissenc = (window.$kissenc) ? $kissenc : {};
+	asp = (window.asp) ? asp : {};
+	var obj =  {
+		decryptName:(decryption === "kissenc") ? "kissenc.min.js" : "asp.js",
+		decryptFunc:(decryption === "kissenc") ? $kissenc.decrypt : asp.wrap
+	}
+	return obj;
+}
+
 //------------------------------------------------------------------          PART I               -------------------------------------------------------------------------------------*/
 if (currentWindow === "episode"){
 	//Fix styling
@@ -240,8 +251,9 @@ if (currentWindow === "episode"){
 	});
 
   //------------------------------------------------------------------          PART II              -------------------------------------------------------------------------------------*/
-} else if (currentWindow === "series"){ 
-	$.getScript("/scripts/asp.js", function(){ //This script is required for some functionality (the asp functions, asp.wrap)
+} else if (currentWindow === "series"){
+	var decryption = GetDecryption();
+	$.getScript("/scripts/"+decryption.decryptName, function(){ //This script is required for decryption of the lins
 		window.seriesCounter = 0;
 		MakeBar("series");
 	});
@@ -751,7 +763,8 @@ function MakeCheckboxes(){
 //Core downloading functions
 function DownloadCurrent(quality, buttonId){
 	if (!buttonId){
-		var url = asp.wrap($("#selectQuality option:contains('"+quality.toString()+"')").attr("value"));
+		var decryption = GetDecryption();
+		var url = decryption.decryptFunc($("#selectQuality option:contains('"+quality.toString()+"')").attr("value"));
 		var titleText = ProcessTitle($("title").text());
 		GetVid(url, titleText, buttonId, buttonId+"_local");
 	} else {
@@ -791,7 +804,8 @@ function GetFromPage(xhr, buttonId, iframeId, interval, index){
 		if (text === undefined) return;
 	}
 	indexes.splice(index, 1);
-	var url = asp.wrap(text);
+
+	var url = GetDecryption().decryptFunc(text);
 	var titleText = ProcessTitle(xhr.split("<title>")[1].split("</title>")[0]);
 	if (interval) interval.kill(true);
 	GetVid(url, titleText, buttonId, iframeId);
