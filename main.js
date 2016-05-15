@@ -236,7 +236,7 @@ if (currentWindow === "episode"){
 	$('#switch').html($('#switch').html().replace("Turn off the light", "Off"));
 
 	MakeBar('episode');
-	
+
 	//Code here for local download links!!!
 	$("#divDownload").html("Download video: ");
 	var first = true;
@@ -335,7 +335,7 @@ function SaveToDisk(link, settings){
 
 	var returnObj = {'iframeId':settings.iframeId, 'buttonId':settings.buttonId, 'host':settings.host};
 	if (settings.downloadTo === 'jDownload') returnObj.url = save.href, returnObj.title = decodeURIComponent(settings.title);
-	window.parent.postMessage(returnObj, settings.host); //Iframe parent message    
+	window.parent.postMessage(returnObj, settings.host); //Iframe parent message
 }
 
 // IFrame cross-browser stuff, removes the iframe when it has loaded...
@@ -363,7 +363,8 @@ $(window).on(messageEvent, function(e){
 				} else {
 					$.post("https://127.0.0.1:9666/flashgot", {
 						fnames:e.data.title+".mp4",
-						urls:e.data.url
+						urls:e.data.url,
+						source:"localhost"
 					});
 				}
 			}
@@ -481,12 +482,12 @@ function MakeButton(params){ //Makes the download button, params include buttonI
 
 	if (params.handler) button.click(function(){MainDl($(this), params, indexes)});
 	if (!params.handler) return button;
-	
+
 	function MainDl($this, params, indexes){
 		if ($this.hasClass("disabled") === false){
 			ButtonState(params.buttonId, false);
 			ButtonState("settingsBtn", false);
-			
+
 			global_settings.quality = parseInt($("#selectQuality option:selected").text().replace("p",""));
 			UpdateGlobalSettings();
 
@@ -495,7 +496,7 @@ function MakeButton(params){ //Makes the download button, params include buttonI
 				var startIndex = 0;
 				var count = parseInt($("#multAmount").val(), 10);
 				if ($("#multSelect").length > 0){ //if it is from the series page
-					startIndex = parseInt($("#multSelect").val(), 10) - 1;   
+					startIndex = parseInt($("#multSelect").val(), 10) - 1;
 				}
 				for (i = startIndex; i<startIndex+count; i++) indexes.push(i);
 				remain[params.buttonId] = indexes.length;
@@ -517,7 +518,7 @@ function MakeButton(params){ //Makes the download button, params include buttonI
 					return "Leaving this page will cancel some of your downloads!";
 				};
 				DownloadVideos(indexes, params.buttonId); //Download the videos with the given indexes
-			}   
+			}
 		}
 	}
 }
@@ -547,7 +548,7 @@ function MakeMultiple(id, params){ //Makes the multiple dropdown boxes
 			multiple.append(option);
 		}
 	}
-	
+
 	if (params.appendTo) return params.appendTo.append(multiple);
 	if (params.prependTo) return params.prependTo.prepend(multiple)
 	return multiple;
@@ -564,14 +565,14 @@ function MakeSettings(){
 	$container = MakeCheck('maxQuality', 'Use this checkbox to force the maximum quality to be downloaded', 'Force Max Quality', {appendTo:$container, help:'This option <b>overrides</b> the manual quality setting'});
 
 	$container = MakeRadio('downloadTo', 'Select the method by which you want to download:', {
-		browser:{text:'Download with Browser', info:'Use the browser to download your files'}, 
+		browser:{text:'Download with Browser', info:'Use the browser to download your files'},
 		idm:{text:'Download with IDM', info:'Use Internet Download Manager to download your files', help:'This requires the <a href="http://getidmcc.com/">Firefox</a> or the <a href="http://www.internetdownloadmanager.com/register/new_faq/chrome_extension.html">Chrome</a> IDM plugins to be installed.'}, 
 		jDownload:{text:'Download with JDownloader', info:'Send links directly to JDownloader 2', help:'This is done using JDownloader\'s flashgot interface, which allows for the URL and the title to be sent directly to JDownloader.'}
 	}, {appendTo:$container});
 
 	$container.append("<h2>Select settings</h2>");
 	$container = MakeRadio('select', 'Choose your selection method:', {
-		drag:{text:'Drag Select', info:'Toggle the selection of episodes by dragging over them', help:'This does not work when the mouse is moving quickly'}, 
+		drag:{text:'Drag Select', info:'Toggle the selection of episodes by dragging over them', help:'This does not work when the mouse is moving quickly'},
 		shift:{text:'Shift Select', info:'Use shift key to assist in selecting episodes', help:'Allows the use of shift key to select the range of videos from the selection screen'}
 	}, {appendTo:$container});
 
@@ -712,7 +713,7 @@ function MakeCheckboxes(){
 				var index = SelectState($this);
 				if (last === undefined) return;
 				var range = [last, index].sort(sortNumber);
-				
+
 				for (var i = Number(range[0])+1; i<Number(range[1]); i++){
 					SelectState($("input[index="+i+"]").parent().parent());
 				}
@@ -834,7 +835,7 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 	}
 	var host = GetHost();
 	var settings = {"title":encodeURIComponent(title), "host":host, "downloadTo":global_settings.downloadTo, "buttonId":buttonId, "iframeId":iframeId};
-	
+
 	var $iframe = $("<iframe>", {
 		src: link + "#" + JSON.stringify(settings),
 		id: iframeId,
@@ -847,12 +848,12 @@ function GetVid(link, title, buttonId, iframeId){ //Force the download to be sta
 }
 
 function ButtonState(id, enable){
-	if (enable !== 'undefined'){    
+	if (enable !== 'undefined'){
 		if (enable){
 			window.top.$("#"+id).removeClass("disabled");
 			window.top.$("#"+id).removeAttr("disabled");
 		} else if (enable === false) {
-			window.top.$("#"+id).addClass("disabled"); 
+			window.top.$("#"+id).addClass("disabled");
 			window.top.$("#"+id).attr("disabled", ""); //This removes the blue highlighting
 		}
 	} else if (id){
@@ -880,7 +881,7 @@ function Lightbox(id, $container, params){
 	var closeText = ($.isFunction(params.closeHandler)) ? 'Retry' : 'Close';
 	var closeBtn = new MakeButton({text:closeText, objectOnly:true, css:{'margin':'auto','margin-top':'8px','display':'inline-block'}});
 	$content.append($("<div>", {'style':'height:100%;position:relative;text-align:center'}).append(closeBtn));
-	
+
 	this.closeHandle = function(e){
 		e.data._this.disable();
 		if ($.isFunction(e.data.params.closeHandler)) e.data.params.closeHandler();
@@ -888,18 +889,18 @@ function Lightbox(id, $container, params){
 
 	var _this = this;
 	closeBtn.click({_this:_this, params:params}, this.closeHandle);
-	
+
 	var $box = $("<div>", {
 		style:"display:none;width:100%;height:150%;top:-25%;position:fixed;background-color:black;opacity:0.8;z-index:99",
 		id:id+count+'_box'
 	}).click({_this:_this, params:params}, this.closeHandle);
-	
+
 	$content.css("margin", "0.5em 1em").addClass("unselectable");
 	var $wrap = $("<div>", {
 		id:id+count+"_content",
 		style:"color:black;display:none;background-color:white;position:fixed;width:400px;height:300px;margin:auto;left:0;right:0;top:30%;border:1px solid #999999;z-index:100"
 	}).append($content);
-	
+
 	if (params.wrapCss) $wrap.css(params.wrapCss);
 	if (params.contCss) $content.css(params.contCss);
 	if (params.selectable) $content.removeClass("unselectable");
@@ -1014,7 +1015,7 @@ function WhatPage(){
 	if (window.location.href.indexOf("google") > -1){
 		if (!page) return 'nothing';
 		return "external";
-	} 
+	}
 
 	if (ep && page && hash) return "skip";
 	if (ep && page) return "episode";
