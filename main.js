@@ -256,7 +256,10 @@ if (currentWindow === "episode"){
 	$.getScript("/scripts/"+decryption.decryptName, function(){ //This script is required for decryption of the lins
 		window.seriesCounter = 0;
 		MakeBar("series");
-	});
+	})
+		.fail( function(jqxhr, settings, exception) {
+			console.error('error in loading decryption script', decryption, exception)
+		} );
 	window.SeriesAfter = function(){
 		$("#multSelect").change(function(){ //A handler for the changing of the first episode to download
 			var amount = parseInt($("#multSelect option").length) - parseInt($("#multSelect").val(), 10);
