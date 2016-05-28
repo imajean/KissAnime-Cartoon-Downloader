@@ -252,14 +252,37 @@ if (currentWindow === "episode"){
 
   //------------------------------------------------------------------          PART II              -------------------------------------------------------------------------------------*/
 } else if (currentWindow === "series"){
-	var decryption = GetDecryption();
-	$.getScript("/scripts/"+decryption.decryptName, function(){ //This script is required for decryption of the lins
-		window.seriesCounter = 0;
+
+	function initializeBar(seriesCounter, MakeBar) {
+		seriesCounter = 0;
 		MakeBar("series");
-	})
-		.fail( function(jqxhr, settings, exception) {
-			console.error('error in loading decryption script', decryption, exception)
-		} );
+	}
+
+	var decryption = GetDecryption();
+
+	if (decryption.decryptName === 'kissenc.min.js') {
+		$.getScript("/scripts/aes.js") // kissenc.min.js requires CryptoJS
+			.then( function() {
+				return $.getScript("/scripts/sha256.min.js") // and sha256
+			} )	
+			.then( function() {
+				return $.getScript("/scripts/"+decryption.decryptName) //This script is required for decryption of the lins
+			} )
+			.then( function() {
+				initializeBar(window.seriesCounter, MakeBar);
+			} )
+			.fail( function(jqxhr, settings, exception) {
+				console.error('error in loading decryption script', decryption, exception)
+			} );
+	} else {
+		$.getScript("/scripts/"+decryption.decryptName, function() { //This script is required for decryption of the lins
+			initializeBar(window.seriesCounter, MakeBar);	
+		})
+			.fail( function(jqxhr, settings, exception) {
+				console.error('error in loading decryption script', decryption, exception)
+			} );
+	}
+
 	window.SeriesAfter = function(){
 		$("#multSelect").change(function(){ //A handler for the changing of the first episode to download
 			var amount = parseInt($("#multSelect option").length) - parseInt($("#multSelect").val(), 10);
